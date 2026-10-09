@@ -438,7 +438,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
         return new NextResponse(settings.LogoData as any, {
           headers: {
             'Content-Type': settings.LogoContentType,
-            'Cache-Control': 'public, max-age=3600',
+            'Cache-Control': 'no-store, max-age=0',
           },
         });
       }
@@ -672,6 +672,15 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
                 data.formattedPhone = data.phone;
               }
             }
+
+            // Add logo properties explicitly
+            data.hasLogo = !!result.LogoData;
+            if (data.hasLogo) {
+              data.logoUrl = `/api/workshop-settings/logo?t=${new Date(result.UpdatedAt || Date.now()).getTime()}`;
+            }
+            
+            // Do not send LogoData bytes to frontend
+            delete data.logoData;
 
             return NextResponse.json({ success: true, data });
         } else {
