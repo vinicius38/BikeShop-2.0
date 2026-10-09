@@ -50,18 +50,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(storedToken);
         await refreshUser();
       } else {
-        // Automatically attempt login as admin for seamless experience if not set
-        try {
-          const res = await api.post<LoginResponse>('/Auth/login', {
-            username: 'admin',
-            password: 'Admin@123456',
-          });
-          setStoredAuth(res.accessToken, res.user);
-          setToken(res.accessToken);
-          setUser(res.user);
-        } catch (e) {
-          console.warn('Auto-login notice:', e);
-        }
+        // No stored token, user must login
+        setUser(null);
+        setToken(null);
       }
       setIsLoading(false);
     };
