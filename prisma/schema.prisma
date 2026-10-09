@@ -1,0 +1,445 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Addresses {
+  Id               Int                @id(map: "PK_Addresses") @default(autoincrement())
+  ZipCode          String
+  Street           String
+  Number           String
+  Complement       String?
+  Neighborhood     String
+  City             String
+  State            String
+  CreatedAt        DateTime           @db.Timestamptz(6)
+  UpdatedAt        DateTime?          @db.Timestamptz(6)
+  CreatedByUserId  Int?
+  UpdatedByUserId  Int?
+  Customers        Customers[]
+  Suppliers        Suppliers[]
+  WorkshopSettings WorkshopSettings[]
+}
+
+model AuditLogs {
+  Id         Int      @id(map: "PK_AuditLogs") @default(autoincrement())
+  UserId     Int?
+  EntityName String   @db.VarChar(100)
+  EntityId   String   @db.VarChar(50)
+  Action     String   @db.VarChar(50)
+  OldValues  String?
+  NewValues  String?
+  IpAddress  String?  @db.VarChar(50)
+  CreatedAt  DateTime @db.Timestamptz(6)
+  Users      Users?   @relation(fields: [UserId], references: [Id], onUpdate: NoAction, map: "FK_AuditLogs_Users_UserId")
+
+  @@index([UserId], map: "IX_AuditLogs_UserId")
+  @@index([EntityName], map: "IX_AuditLogs_EntityName")
+  @@index([CreatedAt], map: "IX_AuditLogs_CreatedAt")
+}
+
+model Bicycles {
+  Id              Int          @id(map: "PK_Bicycles") @default(autoincrement())
+  CustomerId      Int
+  Brand           String       @db.VarChar(80)
+  Model           String       @db.VarChar(80)
+  Color           String?      @db.VarChar(50)
+  FrameSize       String?      @db.VarChar(30)
+  SerialNumber    String?      @db.VarChar(100)
+  BikeType        Int
+  Notes           String?
+  CreatedAt       DateTime     @db.Timestamptz(6)
+  UpdatedAt       DateTime?    @db.Timestamptz(6)
+  CreatedByUserId Int?
+  UpdatedByUserId Int?
+  Customers       Customers    @relation(fields: [CustomerId], references: [Id], onUpdate: NoAction, map: "FK_Bicycles_Customers_CustomerId")
+  WorkOrders      WorkOrders[]
+
+  @@index([SerialNumber], map: "IX_Bicycles_SerialNumber")
+  @@index([CustomerId], map: "IX_Bicycles_CustomerId")
+}
+
+model Customers {
+  Id              Int          @id(map: "PK_Customers") @default(autoincrement())
+  Name            String       @db.VarChar(150)
+  CpfCnpj         String?      @db.VarChar(20)
+  Phone           String?      @db.VarChar(20)
+  CellPhone       String?      @db.VarChar(20)
+  Email           String?      @db.VarChar(100)
+  BirthDate       DateTime?    @db.Timestamptz(6)
+  Notes           String?
+  IsActive        Boolean
+  AddressId       Int?
+  CreatedAt       DateTime     @db.Timestamptz(6)
+  UpdatedAt       DateTime?    @db.Timestamptz(6)
+  CreatedByUserId Int?
+  UpdatedByUserId Int?
+  Bicycles        Bicycles[]
+  Addresses       Addresses?   @relation(fields: [AddressId], references: [Id], onUpdate: NoAction, map: "FK_Customers_Addresses_AddressId")
+  Sales           Sales[]
+  WorkOrders      WorkOrders[]
+
+  @@index([Name], map: "IX_Customers_Name")
+  @@index([AddressId], map: "IX_Customers_AddressId")
+}
+
+model PaymentMethods {
+  Id           Int            @id(map: "PK_PaymentMethods") @default(autoincrement())
+  Name         String         @db.VarChar(60)
+  Code         String         @unique(map: "IX_PaymentMethods_Code") @db.VarChar(30)
+  IsActive     Boolean
+  CreatedAt    DateTime       @db.Timestamptz(6)
+  SalePayments SalePayments[]
+}
+
+model Permissions {
+  Id              Int               @id(map: "PK_Permissions") @default(autoincrement())
+  Name            String            @db.VarChar(100)
+  Code            String            @unique(map: "IX_Permissions_Code") @db.VarChar(100)
+  Module          String            @db.VarChar(50)
+  Description     String
+  RolePermissions RolePermissions[]
+}
+
+model ProductCategories {
+  Id              Int        @id(map: "PK_ProductCategories") @default(autoincrement())
+  Name            String     @unique(map: "IX_ProductCategories_Name") @db.VarChar(100)
+  Description     String?
+  IsActive        Boolean
+  CreatedAt       DateTime   @db.Timestamptz(6)
+  UpdatedAt       DateTime?  @db.Timestamptz(6)
+  CreatedByUserId Int?
+  UpdatedByUserId Int?
+  Products        Products[]
+}
+
+model Products {
+  Id                Int               @id(map: "PK_Products") @default(autoincrement())
+  Sku               String            @unique(map: "IX_Products_Sku") @db.VarChar(50)
+  Barcode           String?           @db.VarChar(50)
+  Name              String            @db.VarChar(150)
+  Description       String?
+  ProductCategoryId Int
+  SupplierId        Int?
+  CostPrice         Decimal           @db.Decimal(18, 2)
+  SalePrice         Decimal           @db.Decimal(18, 2)
+  StockQuantity     Decimal           @db.Decimal(18, 2)
+  MinimumStock      Decimal           @db.Decimal(18, 2)
+  Unit              Int
+  IsActive          Boolean
+  RowVersion        Bytes
+  CreatedAt         DateTime          @db.Timestamptz(6)
+  UpdatedAt         DateTime?         @db.Timestamptz(6)
+  CreatedByUserId   Int?
+  UpdatedByUserId   Int?
+  ProductCategories ProductCategories @relation(fields: [ProductCategoryId], references: [Id], onUpdate: NoAction, map: "FK_Products_ProductCategories_ProductCategoryId")
+  Suppliers         Suppliers?        @relation(fields: [SupplierId], references: [Id], onUpdate: NoAction, map: "FK_Products_Suppliers_SupplierId")
+  SaleItems         SaleItems[]
+  StockMovements    StockMovements[]
+  WorkOrderItems    WorkOrderItems[]
+
+  @@index([SupplierId], map: "IX_Products_SupplierId")
+  @@index([ProductCategoryId], map: "IX_Products_ProductCategoryId")
+  @@index([Name], map: "IX_Products_Name")
+}
+
+model RolePermissions {
+  RoleId       Int
+  PermissionId Int
+  Permissions  Permissions @relation(fields: [PermissionId], references: [Id], onDelete: Cascade, onUpdate: NoAction, map: "FK_RolePermissions_Permissions_PermissionId")
+  Roles        Roles       @relation(fields: [RoleId], references: [Id], onDelete: Cascade, onUpdate: NoAction, map: "FK_RolePermissions_Roles_RoleId")
+
+  @@id([RoleId, PermissionId], map: "PK_RolePermissions")
+  @@index([PermissionId], map: "IX_RolePermissions_PermissionId")
+}
+
+model Roles {
+  Id              Int               @id(map: "PK_Roles") @default(autoincrement())
+  Name            String            @db.VarChar(50)
+  Description     String            @db.VarChar(250)
+  CreatedAt       DateTime          @db.Timestamptz(6)
+  RolePermissions RolePermissions[]
+  Users           Users[]
+}
+
+model SaleItems {
+  Id          Int       @id(map: "PK_SaleItems") @default(autoincrement())
+  SaleId      Int
+  ItemType    Int
+  ProductId   Int?
+  ServiceId   Int?
+  Description String    @db.VarChar(200)
+  Quantity    Decimal   @db.Decimal(18, 2)
+  UnitPrice   Decimal   @db.Decimal(18, 2)
+  Discount    Decimal   @db.Decimal(18, 2)
+  Total       Decimal   @db.Decimal(18, 2)
+  CreatedAt   DateTime  @db.Timestamptz(6)
+  Products    Products? @relation(fields: [ProductId], references: [Id], onDelete: Restrict, onUpdate: NoAction, map: "FK_SaleItems_Products_ProductId")
+  Sales       Sales     @relation(fields: [SaleId], references: [Id], onDelete: Cascade, onUpdate: NoAction, map: "FK_SaleItems_Sales_SaleId")
+  Services    Services? @relation(fields: [ServiceId], references: [Id], onDelete: Restrict, onUpdate: NoAction, map: "FK_SaleItems_Services_ServiceId")
+
+  @@index([ServiceId], map: "IX_SaleItems_ServiceId")
+  @@index([SaleId], map: "IX_SaleItems_SaleId")
+  @@index([ProductId], map: "IX_SaleItems_ProductId")
+}
+
+model SalePayments {
+  Id              Int            @id(map: "PK_SalePayments") @default(autoincrement())
+  SaleId          Int
+  PaymentMethodId Int
+  Amount          Decimal        @db.Decimal(18, 2)
+  Installments    Int
+  TransactionCode String?        @db.VarChar(100)
+  PaidAt          DateTime       @db.Timestamptz(6)
+  PaymentMethods  PaymentMethods @relation(fields: [PaymentMethodId], references: [Id], onUpdate: NoAction, map: "FK_SalePayments_PaymentMethods_PaymentMethodId")
+  Sales           Sales          @relation(fields: [SaleId], references: [Id], onDelete: Cascade, onUpdate: NoAction, map: "FK_SalePayments_Sales_SaleId")
+
+  @@index([SaleId], map: "IX_SalePayments_SaleId")
+  @@index([PaymentMethodId], map: "IX_SalePayments_PaymentMethodId")
+}
+
+model Sales {
+  Id                                   Int            @id(map: "PK_Sales") @default(autoincrement())
+  Number                               String         @unique(map: "IX_Sales_Number") @db.VarChar(30)
+  CustomerId                           Int
+  WorkOrderId                          Int?           @unique(map: "IX_Sales_WorkOrderId")
+  SaleDate                             DateTime       @db.Timestamptz(6)
+  Subtotal                             Decimal        @db.Decimal(18, 2)
+  Discount                             Decimal        @db.Decimal(18, 2)
+  AdditionalCharge                     Decimal        @db.Decimal(18, 2)
+  Total                                Decimal        @db.Decimal(18, 2)
+  Status                               Int
+  CancelledByUserId                    Int?
+  CancelledAt                          DateTime?      @db.Timestamptz(6)
+  CancellationReason                   String?
+  CreatedAt                            DateTime       @db.Timestamptz(6)
+  UpdatedAt                            DateTime?      @db.Timestamptz(6)
+  CreatedByUserId                      Int?
+  UpdatedByUserId                      Int?
+  SaleItems                            SaleItems[]
+  SalePayments                         SalePayments[]
+  Customers                            Customers      @relation(fields: [CustomerId], references: [Id], onUpdate: NoAction, map: "FK_Sales_Customers_CustomerId")
+  Users_Sales_CancelledByUserIdToUsers Users?         @relation("Sales_CancelledByUserIdToUsers", fields: [CancelledByUserId], references: [Id], onUpdate: NoAction, map: "FK_Sales_Users_CancelledByUserId")
+  Users_Sales_CreatedByUserIdToUsers   Users?         @relation("Sales_CreatedByUserIdToUsers", fields: [CreatedByUserId], references: [Id], onUpdate: NoAction, map: "FK_Sales_Users_CreatedByUserId")
+  WorkOrders                           WorkOrders?    @relation(fields: [WorkOrderId], references: [Id], onDelete: Restrict, onUpdate: NoAction, map: "FK_Sales_WorkOrders_WorkOrderId")
+
+  @@index([Status], map: "IX_Sales_Status")
+  @@index([SaleDate], map: "IX_Sales_SaleDate")
+  @@index([CustomerId], map: "IX_Sales_CustomerId")
+  @@index([CreatedByUserId], map: "IX_Sales_CreatedByUserId")
+  @@index([CancelledByUserId], map: "IX_Sales_CancelledByUserId")
+}
+
+model Services {
+  Id                   Int              @id(map: "PK_Services") @default(autoincrement())
+  Name                 String           @db.VarChar(150)
+  Description          String?
+  CostPrice            Decimal          @db.Decimal(18, 2)
+  SalePrice            Decimal          @db.Decimal(18, 2)
+  EstimatedTimeMinutes Int
+  IsActive             Boolean
+  CreatedAt            DateTime         @db.Timestamptz(6)
+  UpdatedAt            DateTime?        @db.Timestamptz(6)
+  CreatedByUserId      Int?
+  UpdatedByUserId      Int?
+  SaleItems            SaleItems[]
+  WorkOrderItems       WorkOrderItems[]
+}
+
+model StockMovements {
+  Id              Int      @id(map: "PK_StockMovements") @default(autoincrement())
+  ProductId       Int
+  Type            Int
+  Quantity        Decimal  @db.Decimal(18, 2)
+  PreviousStock   Decimal  @db.Decimal(18, 2)
+  NewStock        Decimal  @db.Decimal(18, 2)
+  UnitCost        Decimal  @db.Decimal(18, 2)
+  ReferenceType   String?
+  ReferenceId     Int?
+  Description     String?
+  CreatedByUserId Int?
+  CreatedAt       DateTime @db.Timestamptz(6)
+  Products        Products @relation(fields: [ProductId], references: [Id], onUpdate: NoAction, map: "FK_StockMovements_Products_ProductId")
+  Users           Users?   @relation(fields: [CreatedByUserId], references: [Id], onUpdate: NoAction, map: "FK_StockMovements_Users_CreatedByUserId")
+
+  @@index([ProductId], map: "IX_StockMovements_ProductId")
+  @@index([CreatedByUserId], map: "IX_StockMovements_CreatedByUserId")
+  @@index([CreatedAt], map: "IX_StockMovements_CreatedAt")
+}
+
+model Suppliers {
+  Id                Int        @id(map: "PK_Suppliers") @default(autoincrement())
+  CorporateName     String     @db.VarChar(150)
+  TradeName         String     @db.VarChar(150)
+  CpfCnpj           String?    @db.VarChar(20)
+  StateRegistration String?
+  Phone             String?
+  CellPhone         String?
+  Email             String?
+  Notes             String?
+  IsActive          Boolean
+  AddressId         Int?
+  CreatedAt         DateTime   @db.Timestamptz(6)
+  UpdatedAt         DateTime?  @db.Timestamptz(6)
+  CreatedByUserId   Int?
+  UpdatedByUserId   Int?
+  Products          Products[]
+  Addresses         Addresses? @relation(fields: [AddressId], references: [Id], onUpdate: NoAction, map: "FK_Suppliers_Addresses_AddressId")
+
+  @@index([AddressId], map: "IX_Suppliers_AddressId")
+}
+
+model UserRefreshTokens {
+  Id        Int      @id(map: "PK_UserRefreshTokens") @default(autoincrement())
+  UserId    Int
+  Token     String
+  ExpiresAt DateTime @db.Timestamptz(6)
+  IsRevoked Boolean
+  CreatedAt DateTime @db.Timestamptz(6)
+  Users     Users    @relation(fields: [UserId], references: [Id], onDelete: Cascade, onUpdate: NoAction, map: "FK_UserRefreshTokens_Users_UserId")
+
+  @@index([UserId], map: "IX_UserRefreshTokens_UserId")
+}
+
+model Users {
+  Id                                             Int                        @id(map: "PK_Users") @default(autoincrement())
+  Name                                           String                     @db.VarChar(150)
+  Username                                       String                     @unique(map: "IX_Users_Username") @db.VarChar(50)
+  Email                                          String                     @unique(map: "IX_Users_Email") @db.VarChar(100)
+  PasswordHash                                   String                     @db.VarChar(255)
+  IsActive                                       Boolean
+  LastLoginAt                                    DateTime?                  @db.Timestamptz(6)
+  RoleId                                         Int
+  CreatedAt                                      DateTime                   @db.Timestamptz(6)
+  UpdatedAt                                      DateTime?                  @db.Timestamptz(6)
+  CreatedByUserId                                Int?
+  UpdatedByUserId                                Int?
+  AuditLogs                                      AuditLogs[]
+  Sales_Sales_CancelledByUserIdToUsers           Sales[]                    @relation("Sales_CancelledByUserIdToUsers")
+  Sales_Sales_CreatedByUserIdToUsers             Sales[]                    @relation("Sales_CreatedByUserIdToUsers")
+  StockMovements                                 StockMovements[]
+  UserRefreshTokens                              UserRefreshTokens[]
+  Roles                                          Roles                      @relation(fields: [RoleId], references: [Id], onUpdate: NoAction, map: "FK_Users_Roles_RoleId")
+  WorkOrderStatusHistories                       WorkOrderStatusHistories[]
+  WorkOrders_WorkOrders_ApprovedByUserIdToUsers  WorkOrders[]               @relation("WorkOrders_ApprovedByUserIdToUsers")
+  WorkOrders_WorkOrders_AssignedToUserIdToUsers  WorkOrders[]               @relation("WorkOrders_AssignedToUserIdToUsers")
+  WorkOrders_WorkOrders_CreatedByUserFkIdToUsers WorkOrders[]               @relation("WorkOrders_CreatedByUserFkIdToUsers")
+
+  @@index([RoleId], map: "IX_Users_RoleId")
+}
+
+model WorkOrderItems {
+  Id          Int        @id(map: "PK_WorkOrderItems") @default(autoincrement())
+  WorkOrderId Int
+  ItemType    Int
+  ProductId   Int?
+  ServiceId   Int?
+  Description String     @db.VarChar(200)
+  Quantity    Decimal    @db.Decimal(18, 2)
+  UnitPrice   Decimal    @db.Decimal(18, 2)
+  Discount    Decimal    @db.Decimal(18, 2)
+  Total       Decimal    @db.Decimal(18, 2)
+  CreatedAt   DateTime   @db.Timestamptz(6)
+  Products    Products?  @relation(fields: [ProductId], references: [Id], onDelete: Restrict, onUpdate: NoAction, map: "FK_WorkOrderItems_Products_ProductId")
+  Services    Services?  @relation(fields: [ServiceId], references: [Id], onDelete: Restrict, onUpdate: NoAction, map: "FK_WorkOrderItems_Services_ServiceId")
+  WorkOrders  WorkOrders @relation(fields: [WorkOrderId], references: [Id], onDelete: Cascade, onUpdate: NoAction, map: "FK_WorkOrderItems_WorkOrders_WorkOrderId")
+
+  @@index([WorkOrderId], map: "IX_WorkOrderItems_WorkOrderId")
+  @@index([ServiceId], map: "IX_WorkOrderItems_ServiceId")
+  @@index([ProductId], map: "IX_WorkOrderItems_ProductId")
+}
+
+model WorkOrderStatusHistories {
+  Id              Int        @id(map: "PK_WorkOrderStatusHistories") @default(autoincrement())
+  WorkOrderId     Int
+  PreviousStatus  Int
+  NewStatus       Int
+  Reason          String?    @db.VarChar(300)
+  ChangedByUserId Int?
+  ChangedAt       DateTime   @db.Timestamptz(6)
+  Users           Users?     @relation(fields: [ChangedByUserId], references: [Id], onUpdate: NoAction, map: "FK_WorkOrderStatusHistories_Users_ChangedByUserId")
+  WorkOrders      WorkOrders @relation(fields: [WorkOrderId], references: [Id], onDelete: Cascade, onUpdate: NoAction, map: "FK_WorkOrderStatusHistories_WorkOrders_WorkOrderId")
+
+  @@index([WorkOrderId], map: "IX_WorkOrderStatusHistories_WorkOrderId")
+  @@index([ChangedByUserId], map: "IX_WorkOrderStatusHistories_ChangedByUserId")
+}
+
+model WorkOrders {
+  Id                                        Int                        @id(map: "PK_WorkOrders") @default(autoincrement())
+  Number                                    String                     @unique(map: "IX_WorkOrders_Number") @db.VarChar(30)
+  CustomerId                                Int
+  BicycleId                                 Int
+  OpeningDate                               DateTime                   @db.Timestamptz(6)
+  ExpectedDate                              DateTime?                  @db.Timestamptz(6)
+  CompletionDate                            DateTime?                  @db.Timestamptz(6)
+  Status                                    Int
+  Description                               String                     @db.VarChar(500)
+  CustomerComplaint                         String?
+  TechnicalEvaluation                       String?
+  TechnicalNotes                            String?
+  Discount                                  Decimal                    @db.Decimal(18, 2)
+  AdditionalCharge                          Decimal                    @db.Decimal(18, 2)
+  Subtotal                                  Decimal                    @db.Decimal(18, 2)
+  Total                                     Decimal                    @db.Decimal(18, 2)
+  RequestedTotal                            Decimal?                   @db.Decimal(18, 2)
+  ApprovedTotal                             Decimal?                   @db.Decimal(18, 2)
+  ApprovalStatus                            Int
+  ApprovalDate                              DateTime?                  @db.Timestamptz(6)
+  ApprovedByUserId                          Int?
+  ApprovalNotes                             String?
+  AssignedToUserId                          Int?
+  CreatedByUserFkId                         Int?
+  CreatedAt                                 DateTime                   @db.Timestamptz(6)
+  UpdatedAt                                 DateTime?                  @db.Timestamptz(6)
+  CreatedByUserId                           Int?
+  UpdatedByUserId                           Int?
+  Sales                                     Sales?
+  WorkOrderItems                            WorkOrderItems[]
+  WorkOrderStatusHistories                  WorkOrderStatusHistories[]
+  Bicycles                                  Bicycles                   @relation(fields: [BicycleId], references: [Id], onUpdate: NoAction, map: "FK_WorkOrders_Bicycles_BicycleId")
+  Customers                                 Customers                  @relation(fields: [CustomerId], references: [Id], onUpdate: NoAction, map: "FK_WorkOrders_Customers_CustomerId")
+  Users_WorkOrders_ApprovedByUserIdToUsers  Users?                     @relation("WorkOrders_ApprovedByUserIdToUsers", fields: [ApprovedByUserId], references: [Id], onUpdate: NoAction, map: "FK_WorkOrders_Users_ApprovedByUserId")
+  Users_WorkOrders_AssignedToUserIdToUsers  Users?                     @relation("WorkOrders_AssignedToUserIdToUsers", fields: [AssignedToUserId], references: [Id], onUpdate: NoAction, map: "FK_WorkOrders_Users_AssignedToUserId")
+  Users_WorkOrders_CreatedByUserFkIdToUsers Users?                     @relation("WorkOrders_CreatedByUserFkIdToUsers", fields: [CreatedByUserFkId], references: [Id], onUpdate: NoAction, map: "FK_WorkOrders_Users_CreatedByUserFkId")
+
+  @@index([Status], map: "IX_WorkOrders_Status")
+  @@index([OpeningDate], map: "IX_WorkOrders_OpeningDate")
+  @@index([CustomerId], map: "IX_WorkOrders_CustomerId")
+  @@index([CreatedByUserFkId], map: "IX_WorkOrders_CreatedByUserFkId")
+  @@index([BicycleId], map: "IX_WorkOrders_BicycleId")
+  @@index([AssignedToUserId], map: "IX_WorkOrders_AssignedToUserId")
+  @@index([ApprovedByUserId], map: "IX_WorkOrders_ApprovedByUserId")
+}
+
+model WorkshopSettings {
+  Id                    Int        @id(map: "PK_WorkshopSettings") @default(autoincrement())
+  CompanyName           String     @db.VarChar(150)
+  TradeName             String     @db.VarChar(150)
+  CorporateName         String     @db.VarChar(150)
+  CpfCnpj               String?    @db.VarChar(20)
+  StateRegistration     String?    @db.VarChar(30)
+  Phone                 String?    @db.VarChar(20)
+  WhatsApp              String?    @db.VarChar(20)
+  Email                 String?    @db.VarChar(150)
+  Website               String?    @db.VarChar(200)
+  AddressId             Int?
+  LogoFileName          String?    @db.VarChar(255)
+  LogoContentType       String?    @db.VarChar(100)
+  LogoStoragePath       String?    @db.VarChar(500)
+  LogoData              Bytes?
+  FooterMessage         String?    @db.VarChar(500)
+  AdditionalInformation String?    @db.VarChar(1000)
+  IsActive              Boolean
+  CreatedAt             DateTime   @db.Timestamptz(6)
+  UpdatedAt             DateTime?  @db.Timestamptz(6)
+  CreatedByUserId       Int?
+  UpdatedByUserId       Int?
+  Addresses             Addresses? @relation(fields: [AddressId], references: [Id], onUpdate: NoAction, map: "FK_WorkshopSettings_Addresses_AddressId")
+
+  @@index([IsActive], map: "IX_WorkshopSettings_IsActive")
+  @@index([AddressId], map: "IX_WorkshopSettings_AddressId")
+}
