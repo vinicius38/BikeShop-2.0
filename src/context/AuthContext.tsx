@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const currentUser = await api.get<User>('/Auth/me');
       setUser(currentUser);
-      localStorage.setItem('oficinabike_user', JSON.stringify(currentUser));
+      sessionStorage.setItem('oficinabike_user', JSON.stringify(currentUser));
     } catch (err) {
       console.warn('Failed to refresh user', err);
       // If error occurs, keep cached user or clear if 401
