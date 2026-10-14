@@ -84,8 +84,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
-    // Admin has all permissions or check permission list
-    if (user.roleName === 'Administrador' || user.permissions?.includes('*')) {
+    // Admin has all permissions or wildcard
+    if (
+      user.roleId === 1 ||
+      user.roleName?.toLowerCase() === 'administrador' ||
+      user.permissions?.includes('*')
+    ) {
       return true;
     }
     return user.permissions?.includes(permission) || false;

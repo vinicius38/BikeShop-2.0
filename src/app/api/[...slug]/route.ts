@@ -32,8 +32,24 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   try {
     // Auth me
     if (path === 'auth/me') {
+      const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
+      let userId = 1; // default fallback
+      if (authHeader && authHeader.includes('token_')) {
+        try {
+          const match = authHeader.match(/token_([A-Za-z0-9+/=]+)/);
+          if (match && match[1]) {
+            const parsed = JSON.parse(Buffer.from(match[1], 'base64').toString('utf-8'));
+            if (parsed?.id) {
+              userId = Number(parsed.id);
+            }
+          }
+        } catch (e) {
+          console.warn('Error parsing token in auth/me:', e);
+        }
+      }
+
       const user = await prisma.users.findFirst({
-        where: { Id: 1 },
+        where: { Id: userId },
         include: {
           Roles: {
             include: {
@@ -44,21 +60,27 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
           }
         }
       });
-      const perms = user?.Roles?.RolePermissions?.map(rp => rp.Permissions.Code) || [];
+
+      if (!user) {
+        return NextResponse.json({ success: false, message: 'Usuário não encontrado' }, { status: 404 });
+      }
+
+      const perms = user.Roles?.RolePermissions?.map(rp => rp.Permissions.Code) || [];
+      const isRoleAdmin = user.RoleId === 1 || user.Roles?.Name?.toLowerCase() === 'administrador';
 
       return NextResponse.json({
         success: true,
         data: {
-          id: user?.Id || 1,
-          name: user?.Name || 'Administrador',
-          username: user?.Username || 'admin',
-          email: user?.Email || 'admin@oficinabike.com',
-          isActive: user ? user.IsActive : true,
-          roleId: user?.RoleId || 1,
-          roleName: user?.Roles?.Name || 'Administrador',
-          permissions: perms.length > 0 ? perms : ['*'],
-          lastLoginAt: user?.LastLoginAt?.toISOString() || new Date().toISOString(),
-          createdAt: user?.CreatedAt?.toISOString() || new Date().toISOString()
+          id: user.Id,
+          name: user.Name,
+          username: user.Username,
+          email: user.Email,
+          isActive: user.IsActive,
+          roleId: user.RoleId,
+          roleName: user.Roles?.Name || 'Colaborador',
+          permissions: isRoleAdmin ? (perms.length > 0 ? perms : ['*']) : perms,
+          lastLoginAt: user.LastLoginAt?.toISOString() || new Date().toISOString(),
+          createdAt: user.CreatedAt?.toISOString() || new Date().toISOString()
         }
       });
     }
@@ -1076,10 +1098,14 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       
       if (user) {
         const userPermissions = user.Roles?.RolePermissions?.map(rp => rp.Permissions.Code) || [];
+        const isRoleAdmin = user.RoleId === 1 || user.Roles?.Name?.toLowerCase() === 'administrador';
+        const perms = isRoleAdmin ? (userPermissions.length > 0 ? userPermissions : ['*']) : userPermissions;
+
+        const tokenPayload = Buffer.from(JSON.stringify({ id: user.Id, username: user.Username })).toString('base64');
         return NextResponse.json({
           success: true,
           data: {
-            accessToken: 'mock-jwt-token-vercel',
+            accessToken: `token_${tokenPayload}`,
             user: {
               id: user.Id,
               name: user.Name,
@@ -1088,7 +1114,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
               isActive: user.IsActive,
               roleId: user.RoleId,
               roleName: user.Roles?.Name || 'Colaborador',
-              permissions: userPermissions
+              permissions: perms
             }
           }
         });
@@ -1096,11 +1122,12 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
 
       // Hardcoded fallback for default admin if not in DB
       if (body.username === 'admin' && body.password === 'Admin@123456') {
+        const adminPayload = Buffer.from(JSON.stringify({ id: 1, username: 'admin' })).toString('base64');
         return NextResponse.json({
           success: true,
           data: {
-            accessToken: 'mock-jwt-token-vercel',
-            user: { id: 1, name: 'Admin', email: 'admin@admin.com', roleName: 'Administrador' }
+            accessToken: `token_${adminPayload}`,
+            user: { id: 1, name: 'Admin', email: 'admin@admin.com', roleName: 'Administrador', permissions: ['*'] }
           }
         });
       }

@@ -20,9 +20,42 @@ import { UsersView } from './components/settings/UsersView';
 import { PermissionsView } from './components/settings/PermissionsView';
 
 const MainAppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, hasPermission } = useAuth();
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [targetItemId, setTargetItemId] = useState<number | null>(null);
+
+  // Ensure user is navigated to an accessible view for their role
+  React.useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const viewPermissions: Record<string, string> = {
+      'dashboard': 'Dashboard.View',
+      'work-orders': 'WorkOrders.View',
+      'sales': 'Sales.View',
+      'customers': 'Customers.View',
+      'bicycles': 'Bicycles.View',
+      'products': 'Products.View',
+      'services': 'Services.View',
+      'suppliers': 'Suppliers.View',
+      'stock': 'Stock.View',
+      'stock-movements': 'Stock.View',
+      'financial': 'Sales.View',
+      'reports': 'Reports.View',
+      'settings-workshop': 'WorkshopSettings.View',
+      'users': 'Users.View',
+      'permissions': 'Users.View',
+    };
+
+    const requiredPermission = viewPermissions[currentView];
+    if (requiredPermission && !hasPermission(requiredPermission)) {
+      const firstValidView = Object.keys(viewPermissions).find((v) =>
+        hasPermission(viewPermissions[v])
+      );
+      if (firstValidView) {
+        setCurrentView(firstValidView);
+      }
+    }
+  }, [user, isAuthenticated, currentView, hasPermission]);
 
   if (isLoading) {
     return (

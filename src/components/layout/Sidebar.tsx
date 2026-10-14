@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   isCollapsed,
 }) => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const { workshopName, tradeName, logoUrl } = useWorkshop();
 
   const menuGroups: MenuGroup[] = [
@@ -260,9 +260,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
+        {/* User Profile Card inside Sidebar */}
+        <div className="px-3 pt-3 pb-1 shrink-0">
+          <div
+            className={`p-2.5 rounded-xl bg-[#121E30]/80 border border-[#1F2E45] flex items-center gap-2.5 ${
+              isCollapsed ? 'justify-center p-2' : ''
+            }`}
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#A9581E] to-[#EF7410] flex items-center justify-center text-white text-xs font-bold uppercase shrink-0 shadow-sm">
+              {user?.name ? user.name.slice(0, 2).toUpperCase() : 'NB'}
+            </div>
+            {!isCollapsed && (
+              <div className="grow min-w-0">
+                <span className="block text-xs font-bold text-[#F8F8F8] truncate" title={user?.name}>
+                  {user?.name || 'Usuário'}
+                </span>
+                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-[#EF7410]/15 text-[#EF7410] font-mono uppercase tracking-wider font-semibold truncate">
+                  {user?.roleName || 'Colaborador'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Scrollable Navigation Menu */}
         <nav className="grow overflow-y-auto px-3 py-4 space-y-5 custom-scrollbar">
-          {filteredGroups.map((group) => (
+          {filteredGroups.length === 0 ? (
+            <div className="px-3 py-6 text-center text-xs text-[#ACB0B0]">
+              <p className="font-semibold text-white">Nenhum menu liberado</p>
+              <p className="text-[11px] mt-1 text-[#ACB0B0]/70 leading-relaxed">
+                Seu perfil ({user?.roleName}) ainda não possui permissões atribuídas. Solicite ao administrador do sistema.
+              </p>
+            </div>
+          ) : (
+            filteredGroups.map((group) => (
             <div key={group.groupName}>
               {!isCollapsed && (
                 <div className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#ACB0B0]/70 font-mono">
@@ -300,7 +331,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 })}
               </div>
             </div>
-          ))}
+          )))}
         </nav>
 
         {/* Bottom indicator */}
