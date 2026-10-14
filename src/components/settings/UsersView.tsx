@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCog, Plus, CheckCircle2, XCircle, Shield, User, Lock } from 'lucide-react';
+import { UserCog, Plus, CheckCircle2, XCircle, Shield, User, Lock, Key, ChevronDown, ChevronUp, Info, ShieldCheck } from 'lucide-react';
 import { userService, CreateUserDto } from '../../services/userService';
 import { User as UserType, Role } from '../../types/api';
 import { Modal } from '../common/Modal';
@@ -12,6 +12,7 @@ export const UsersView: React.FC = () => {
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [showPermDetails, setShowPermDetails] = useState(false);
   const [formData, setFormData] = useState<CreateUserDto>({
     name: '',
     username: '',
@@ -109,6 +110,7 @@ export const UsersView: React.FC = () => {
               password: '',
               roleId: roles[0]?.id || 1,
             });
+            setShowPermDetails(false);
             setErrorMsg(null);
             setIsModalOpen(true);
           }}
@@ -158,10 +160,23 @@ export const UsersView: React.FC = () => {
                     <td className="py-3 px-4 font-mono text-white">{u.username}</td>
                     <td className="py-3 px-4 text-[#ACB0B0]">{u.email}</td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1 font-mono text-[11px] text-[#3B82F6]">
-                        <Shield className="w-3.5 h-3.5" />
-                        {u.roleName}
-                      </span>
+                      <div>
+                        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-[#3B82F6] font-semibold">
+                          <Shield className="w-3.5 h-3.5" />
+                          {u.roleName}
+                        </span>
+                        {u.permissions && u.permissions.length > 0 ? (
+                          <span className="block text-[10px] text-[#ACB0B0] font-mono mt-0.5">
+                            {u.permissions.length === 45 || u.roleName === 'Administrador'
+                              ? 'Acesso total (45 perms)'
+                              : `${u.permissions.length} permissões ativas`}
+                          </span>
+                        ) : u.roleName === 'Administrador' ? (
+                          <span className="block text-[10px] text-[#22C55E] font-mono mt-0.5">
+                            Acesso total
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="py-3 px-4 font-mono text-[11px] text-[#ACB0B0]">
                       {u.lastLoginAt
@@ -192,6 +207,7 @@ export const UsersView: React.FC = () => {
                                 password: '', // blank initially for update
                                 roleId: u.roleId,
                               });
+                              setShowPermDetails(false);
                               setErrorMsg(null);
                               setIsModalOpen(true);
                             }}
@@ -301,15 +317,77 @@ export const UsersView: React.FC = () => {
                       : 'bg-[#121E30] text-white'
                   }`}
                 >
-                  {Array.isArray(roles) &&
+                  {Array.isArray(roles) && roles.length > 0 ? (
                     roles.map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.name}
+                        {r.name} {r.permissions?.length ? `(${r.permissions.length} permissões)` : r.name === 'Administrador' ? '(Acesso total)' : ''}
                       </option>
-                    ))}
+                    ))
+                  ) : (
+                    <option value="" disabled>Carregando perfis...</option>
+                  )}
                 </select>
               </div>
             </div>
+
+            {/* Role & Permissions preview box */}
+            {(() => {
+              const selectedRole = roles.find((r) => r.id === formData.roleId) || roles[0];
+              if (!selectedRole) return null;
+              return (
+                <div className="p-3 rounded-lg bg-[#0B1424] border border-[#1F2E45] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-[#EF7410]" />
+                      <span className="font-semibold text-white text-[11px]">
+                        Perfil Selecionado: <span className="text-[#EF7410]">{selectedRole.name}</span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-[#3B82F6]/15 border border-[#3B82F6]/30 text-[#3B82F6] font-mono font-semibold">
+                      {selectedRole.name === 'Administrador' || (selectedRole.permissions && selectedRole.permissions.length === 45)
+                        ? 'Acesso total (45 permissões)'
+                        : `${selectedRole.permissions?.length || 0} permissões ativas`}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-[#ACB0B0]">
+                    {selectedRole.description || 'Perfil com permissões pré-definidas no sistema.'}
+                  </p>
+
+                  {selectedRole.permissions && selectedRole.permissions.length > 0 && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPermDetails(!showPermDetails)}
+                        className="text-[11px] text-[#EF7410] hover:underline flex items-center gap-1 font-medium mt-1 cursor-pointer"
+                      >
+                        {showPermDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        {showPermDetails ? 'Ocultar detalhes das permissões' : 'Ver permissões deste perfil'}
+                      </button>
+
+                      {showPermDetails && (
+                        <div className="mt-2 p-2.5 rounded bg-[#121E30] border border-[#1F2E45]/80 max-h-36 overflow-y-auto custom-scrollbar flex flex-wrap gap-1.5">
+                          {selectedRole.permissions.map((pCode) => (
+                            <span
+                              key={pCode}
+                              className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#18263A] border border-[#1F2E45] text-[#ACB0B0] flex items-center gap-1"
+                            >
+                              <Key className="w-2.5 h-2.5 text-[#22C55E]" />
+                              {pCode}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-[#ACB0B0]/70 flex items-center gap-1 pt-1.5 border-t border-[#1F2E45]/50">
+                    <Info className="w-3 h-3 shrink-0 text-[#EF7410]" />
+                    <span>As permissões são vinculadas ao perfil de acesso. Para gerenciar a matriz de permissões, acesse <strong>Permissões</strong>.</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div>
               <label className="block font-semibold text-[#ACB0B0] uppercase mb-1">E-mail *</label>

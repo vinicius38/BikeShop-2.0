@@ -30,21 +30,35 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const path = slug.join('/').toLowerCase();
   
   try {
-    // Auth mock
+    // Auth me
     if (path === 'auth/me') {
+      const user = await prisma.users.findFirst({
+        where: { Id: 1 },
+        include: {
+          Roles: {
+            include: {
+              RolePermissions: {
+                include: { Permissions: true }
+              }
+            }
+          }
+        }
+      });
+      const perms = user?.Roles?.RolePermissions?.map(rp => rp.Permissions.Code) || [];
+
       return NextResponse.json({
         success: true,
         data: {
-          id: 1,
-          name: 'Administrador',
-          username: 'admin',
-          email: 'admin@oficinabike.com',
-          isActive: true,
-          roleId: 1,
-          roleName: 'Administrador',
-          permissions: [],
-          lastLoginAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          id: user?.Id || 1,
+          name: user?.Name || 'Administrador',
+          username: user?.Username || 'admin',
+          email: user?.Email || 'admin@oficinabike.com',
+          isActive: user ? user.IsActive : true,
+          roleId: user?.RoleId || 1,
+          roleName: user?.Roles?.Name || 'Administrador',
+          permissions: perms.length > 0 ? perms : ['*'],
+          lastLoginAt: user?.LastLoginAt?.toISOString() || new Date().toISOString(),
+          createdAt: user?.CreatedAt?.toISOString() || new Date().toISOString()
         }
       });
     }
@@ -476,7 +490,21 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
         } else if (modelName === 'suppliers') {
           includeConfig.include = { Addresses: true };
         } else if (modelName === 'users') {
-          includeConfig.include = { Roles: true };
+          includeConfig.include = {
+            Roles: {
+              include: {
+                RolePermissions: {
+                  include: { Permissions: true }
+                }
+              }
+            }
+          };
+        } else if (modelName === 'roles') {
+          includeConfig.include = {
+            RolePermissions: {
+              include: { Permissions: true }
+            }
+          };
         }
 
         const result = await (prisma as any)[modelName].findUnique({ 
@@ -620,6 +648,21 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
               transformedResult.address = transformedResult.addresses;
               delete transformedResult.addresses;
             }
+          } else if (modelName === 'users') {
+            if (transformedResult.roles) {
+              transformedResult.roleName = transformedResult.roles.name;
+              transformedResult.permissions = transformedResult.roles.rolePermissions
+                ?.map((rp: any) => rp.permissions?.code || rp.permissions?.name)
+                .filter(Boolean) || [];
+              delete transformedResult.roles;
+            }
+          } else if (modelName === 'roles') {
+            if (transformedResult.rolePermissions) {
+              transformedResult.permissions = transformedResult.rolePermissions
+                ?.map((rp: any) => rp.permissions?.code || rp.permissions?.name)
+                .filter(Boolean) || [];
+              delete transformedResult.rolePermissions;
+            }
           }
         }
         
@@ -703,7 +746,21 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
             } else if (modelName === 'suppliers') {
               includeConfig.include = { Addresses: true };
             } else if (modelName === 'users') {
-              includeConfig.include = { Roles: true };
+              includeConfig.include = {
+                Roles: {
+                  include: {
+                    RolePermissions: {
+                      include: { Permissions: true }
+                    }
+                  }
+                }
+              };
+            } else if (modelName === 'roles') {
+              includeConfig.include = {
+                RolePermissions: {
+                  include: { Permissions: true }
+                }
+              };
             }
             const url = new URL(request.url);
             const search = url.searchParams.get('Search');
@@ -757,7 +814,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
             result = await (prisma as any)[modelName].findMany({ 
               take: pageSize,
               skip: skip,
-              orderBy: { Id: 'desc' }, 
+              orderBy: (modelName === 'roles' || modelName === 'permissions' || modelName === 'paymentMethods' || modelName === 'productCategories') ? { Id: 'asc' } : { Id: 'desc' }, 
               where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
               ...includeConfig 
             });
@@ -884,13 +941,39 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
                 });
               } else if (modelName === 'users') {
                 transformedResult = transformedResult.map((u: any) => {
+                  let perms: string[] = [];
                   if (u.roles) {
                     u.roleName = u.roles.name;
+                    if (u.roles.rolePermissions && Array.isArray(u.roles.rolePermissions)) {
+                      perms = u.roles.rolePermissions
+                        .map((rp: any) => rp.permissions?.code || rp.permissions?.name)
+                        .filter(Boolean);
+                    }
                     delete u.roles;
                   } else if (u.Roles) {
                     u.roleName = u.Roles.Name;
+                    if (u.Roles.RolePermissions && Array.isArray(u.Roles.RolePermissions)) {
+                      perms = u.Roles.RolePermissions
+                        .map((rp: any) => rp.Permissions?.Code || rp.Permissions?.Name)
+                        .filter(Boolean);
+                    }
                   }
+                  u.permissions = perms;
                   return u;
+                });
+              } else if (modelName === 'roles') {
+                transformedResult = transformedResult.map((r: any) => {
+                  let permissions: string[] = [];
+                  if (r.rolePermissions && Array.isArray(r.rolePermissions)) {
+                    permissions = r.rolePermissions
+                      .map((rp: any) => rp.permissions?.code || rp.permissions?.name)
+                      .filter(Boolean);
+                    delete r.rolePermissions;
+                  }
+                  return {
+                    ...r,
+                    permissions
+                  };
                 });
               }
             }
@@ -980,15 +1063,33 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
           ],
           PasswordHash: body.password
         },
-        include: { Roles: true }
+        include: {
+          Roles: {
+            include: {
+              RolePermissions: {
+                include: { Permissions: true }
+              }
+            }
+          }
+        }
       });
       
       if (user) {
+        const userPermissions = user.Roles?.RolePermissions?.map(rp => rp.Permissions.Code) || [];
         return NextResponse.json({
           success: true,
           data: {
             accessToken: 'mock-jwt-token-vercel',
-            user: { id: user.Id, name: user.Name, email: user.Email, roleName: user.Roles?.Name || 'Colaborador' }
+            user: {
+              id: user.Id,
+              name: user.Name,
+              username: user.Username,
+              email: user.Email,
+              isActive: user.IsActive,
+              roleId: user.RoleId,
+              roleName: user.Roles?.Name || 'Colaborador',
+              permissions: userPermissions
+            }
           }
         });
       }
@@ -1471,8 +1572,12 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
 
     const entity = slug[0];
 
-    if (entity.toLowerCase() === 'users' && slug.length === 4 && slug[1].toLowerCase() === 'roles' && slug[3].toLowerCase() === 'permissions') {
-      const roleId = Number(slug[2]);
+    const isRolePermissionsUpdate = 
+      (entity.toLowerCase() === 'users' && slug.length === 4 && slug[1].toLowerCase() === 'roles' && slug[3].toLowerCase() === 'permissions') ||
+      (entity.toLowerCase() === 'roles' && slug.length === 3 && slug[2].toLowerCase() === 'permissions');
+
+    if (isRolePermissionsUpdate) {
+      const roleId = Number(slug.length === 4 ? slug[2] : slug[1]);
       const { permissions } = body;
       
       if (Array.isArray(permissions)) {
@@ -1655,3 +1760,34 @@ export async function DELETE(request: Request, context: { params: Promise<{ slug
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request, context: { params: Promise<{ slug: string[] }> }) {
+  const params = await context.params;
+  const { slug } = params;
+  try {
+    const entity = slug[0].toLowerCase();
+    if (entity === 'users' && slug.length === 3) {
+      const id = Number(slug[1]);
+      const action = slug[2].toLowerCase();
+      if (!isNaN(id)) {
+        if (action === 'activate') {
+          const user = await prisma.users.update({
+            where: { Id: id },
+            data: { IsActive: true, UpdatedAt: new Date() }
+          });
+          return NextResponse.json({ success: true, data: toCamelCase(user) });
+        } else if (action === 'deactivate') {
+          const user = await prisma.users.update({
+            where: { Id: id },
+            data: { IsActive: false, UpdatedAt: new Date() }
+          });
+          return NextResponse.json({ success: true, data: toCamelCase(user) });
+        }
+      }
+    }
+    return NextResponse.json({ success: false, message: 'Route not mapped' }, { status: 404 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
