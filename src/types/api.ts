@@ -90,6 +90,13 @@ export interface DashboardData {
   lowStockProductsCount: number;
   lowStockProducts: LowStockProductSummary[];
   weeklyMovement: WeeklyMovement[];
+  categorySales?: CategorySaleSummary[];
+}
+
+export interface CategorySaleSummary {
+  name: string;
+  amount: number;
+  percentage: number;
 }
 
 export interface WeeklyMovement {

@@ -285,6 +285,63 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
         });
       }
 
+      // Vendas por categoria (últimos 30 dias)
+      const salesForCategory = await p.sales.findMany({
+        where: { SaleDate: { gte: startOfMonth, lte: endOfMonth }, Status: 2 },
+        select: {
+          SaleItems: {
+            select: {
+              ItemType: true,
+              Total: true,
+              ServiceId: true,
+              Products: {
+                select: {
+                  ProductCategories: {
+                    select: { Name: true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const categoryTotals: Record<string, number> = {};
+      let totalCategoryAmount = 0;
+
+      for (const sale of salesForCategory) {
+        if (!sale.SaleItems || !Array.isArray(sale.SaleItems)) continue;
+        for (const item of sale.SaleItems) {
+          const itemAmount = Number(item.Total || 0);
+          if (itemAmount <= 0) continue;
+
+          let categoryName = 'Peças & Componentes';
+          if (item.ServiceId || item.ItemType === 2) {
+            categoryName = 'Serviços & Revisões';
+          } else if (item.Products?.ProductCategories?.Name) {
+            categoryName = item.Products.ProductCategories.Name;
+          }
+
+          categoryTotals[categoryName] = (categoryTotals[categoryName] || 0) + itemAmount;
+          totalCategoryAmount += itemAmount;
+        }
+      }
+
+      const categorySales: { name: string; amount: number; percentage: number }[] = [];
+      if (totalCategoryAmount > 0) {
+        const sortedCategories = Object.entries(categoryTotals)
+          .sort((a, b) => b[1] - a[1]);
+
+        for (const [name, amount] of sortedCategories) {
+          const percentage = Math.round((amount / totalCategoryAmount) * 100);
+          categorySales.push({
+            name,
+            amount: Number(amount.toFixed(2)),
+            percentage
+          });
+        }
+      }
+
       return NextResponse.json({
         success: true,
         data: {
@@ -305,7 +362,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
             ...p,
             unit: { 1: 'UN', 2: 'KG', 3: 'L', 4: 'MT', 5: 'PAR', 6: 'CX' }[p.unit as number] || p.unit || 'UN'
           })),
-          weeklyMovement
+          weeklyMovement,
+          categorySales
         }
       });
     }

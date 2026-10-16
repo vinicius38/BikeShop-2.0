@@ -111,12 +111,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       : [{ name: 'Sem OS Ativas', value: 1, color: '#1F2E45' }];
 
   // Category sales breakdown
-  const categoryData = [
-    { name: 'Peças & Componentes', valor: 45 },
-    { name: 'Serviços & Revisões', valor: 35 },
-    { name: 'Acessórios & Vestuário', valor: 15 },
-    { name: 'E-Bikes & Mobilidade', valor: 5 },
-  ];
+  const categoryData = (dashboardData?.categorySales || []).filter(
+    (cat) => cat.percentage > 0 || cat.amount > 0
+  );
 
   // Movimentação semanal/mensal real
   const movementData = dashboardData?.weeklyMovement || [];
@@ -403,26 +400,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             <p className="text-xs text-[#ACB0B0]">Proporção de faturamento por segmento</p>
           </div>
 
-          <div className="space-y-3.5 grow flex flex-col justify-center">
-            {categoryData.map((cat, idx) => (
-              <div key={cat.name} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#ACB0B0] font-medium">{cat.name}</span>
-                  <span className="font-mono font-bold text-white">{cat.valor}%</span>
+          {categoryData.length === 0 ? (
+            <div className="py-8 text-center text-xs text-[#ACB0B0] flex flex-col items-center justify-center grow">
+              <Package className="w-8 h-8 text-[#ACB0B0]/30 mb-2" />
+              <p className="font-semibold text-white">Nenhuma movimentação registrada</p>
+              <p className="text-[11px] text-[#ACB0B0]/60 mt-1 max-w-[220px]">
+                A proporção por segmento será calculada automaticamente após as primeiras vendas.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3.5 grow flex flex-col justify-center">
+              {categoryData.map((cat, idx) => (
+                <div key={cat.name} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#ACB0B0] font-medium truncate max-w-[180px]">{cat.name}</span>
+                    <span className="font-mono font-bold text-white">{cat.percentage}%</span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-[#121E30] overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${cat.percentage}%`,
+                        backgroundColor:
+                          ['#EF7410', '#3B82F6', '#22C55E', '#F59E0B', '#8B5CF6', '#EC4899'][idx % 6],
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2 rounded-full bg-[#121E30] overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${cat.valor}%`,
-                      backgroundColor:
-                        idx === 0 ? '#EF7410' : idx === 1 ? '#3B82F6' : idx === 2 ? '#22C55E' : '#F59E0B',
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="pt-3 border-t border-[#1F2E45] text-right">
             <button
