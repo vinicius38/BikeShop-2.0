@@ -110,7 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = useCallback(async () => {
     try {
-      if (!getStoredToken()) {
+      const storedToken = getStoredToken();
+      if (!storedToken) {
         setUser(null);
         setToken(null);
         return;
@@ -118,18 +119,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = await api.get<User>('/Auth/me');
       const preparedUser = ensureUserPermissions(currentUser);
       setUser(preparedUser);
-      if (preparedUser) {
-        sessionStorage.setItem('oficinabike_user', JSON.stringify(preparedUser));
+      if (preparedUser && storedToken) {
+        setStoredAuth(storedToken, preparedUser);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Failed to refresh user', err);
-      // If error occurs, keep cached user with guaranteed permissions
-      setUser((prev) => ensureUserPermissions(prev));
+      if (err?.status === 401 || err?.message?.includes('401') || err?.message?.includes('autorizado')) {
+        clearStoredAuth();
+        setUser(null);
+        setToken(null);
+      } else {
+        // If error occurs, keep cached user with guaranteed permissions
+        setUser((prev) => ensureUserPermissions(prev));
+      }
     }
   }, []);
 
   useEffect(() => {
     const handleUnauthorized = () => {
+      clearStoredAuth();
       setUser(null);
       setToken(null);
     };
@@ -138,7 +146,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const init = async () => {
       const storedToken = getStoredToken();
-      if (storedToken) {
+      const storedUser = getStoredUser();
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(ensureUserPermissions(storedUser));
+        await refreshUser();
+      } else if (storedToken) {
         setToken(storedToken);
         await refreshUser();
       } else {

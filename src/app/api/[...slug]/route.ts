@@ -136,10 +136,12 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
         }
       }
 
-      const targetUserId = userId || 1;
+      if (!userId) {
+        return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
+      }
 
       const user = await prisma.users.findFirst({
-        where: { Id: targetUserId },
+        where: { Id: userId },
         include: {
           Roles: {
             include: {

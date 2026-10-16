@@ -5,24 +5,36 @@ const USER_KEY = 'oficinabike_user';
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 }
 
 export function setStoredAuth(token: string, user: any): void {
   if (typeof window === 'undefined') return;
-  sessionStorage.setItem(TOKEN_KEY, token);
-  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch (e) {
+    console.warn('Storage set error:', e);
+  }
 }
 
 export function clearStoredAuth(): void {
   if (typeof window === 'undefined') return;
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(USER_KEY);
+  try {
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  } catch (e) {
+    console.warn('Storage clear error:', e);
+  }
 }
 
 export function getStoredUser(): any | null {
   if (typeof window === 'undefined') return null;
-  const raw = sessionStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
