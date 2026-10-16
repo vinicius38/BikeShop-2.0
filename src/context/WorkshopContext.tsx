@@ -49,7 +49,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const tradeName = settings?.tradeName || 'Oficina Especializada';
   // Logo URL from backend API endpoint, appending timestamp to prevent aggressive browser caching
   const logoUrl = settings?.hasLogo 
-    ? (settings.logoUrl || `/api/workshop-settings/logo?t=${new Date(settings.updatedAt || Date.now()).getTime()}`)
+    ? (settings.logoUrl || (settings.updatedAt ? `/api/workshop-settings/logo?t=${new Date(settings.updatedAt).getTime()}` : '/api/workshop-settings/logo'))
     : '/api/workshop-settings/logo';
 
   return (

@@ -1331,6 +1331,12 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
           pascalBody.ProductCategoryId = Number(pascalBody.CategoryId);
           delete pascalBody.CategoryId;
         }
+        if (!pascalBody.ProductCategoryId || isNaN(pascalBody.ProductCategoryId)) {
+          const firstCat = await prisma.productCategories.findFirst({ where: { IsActive: true } });
+          if (firstCat) {
+            pascalBody.ProductCategoryId = firstCat.Id;
+          }
+        }
         if (pascalBody.MinimumStockQuantity !== undefined) {
           pascalBody.MinimumStock = Number(pascalBody.MinimumStockQuantity);
           delete pascalBody.MinimumStockQuantity;

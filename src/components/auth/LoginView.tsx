@@ -32,7 +32,7 @@ export const LoginView: React.FC = () => {
       {/* Background Graphic */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: `url(${bannerBg})` }}
+        style={{ backgroundImage: `url(${typeof bannerBg === 'string' ? bannerBg : (bannerBg as any)?.src || bannerBg})` }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-[#040915] via-[#040915]/90 to-[#040915]/60" />
 

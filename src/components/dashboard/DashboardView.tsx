@@ -127,7 +127,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       <div className="relative rounded-2xl overflow-hidden border border-[#1F2E45] bg-[#0B1424] shadow-xl">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-luminosity"
-          style={{ backgroundImage: `url(${bannerBg})` }}
+          style={{ backgroundImage: `url(${typeof bannerBg === 'string' ? bannerBg : (bannerBg as any)?.src || bannerBg})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#040915] via-[#040915]/90 to-transparent" />
 

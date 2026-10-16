@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
   };
 
-  const hasPermission = (permission: string): boolean => {
+  const hasPermission = useCallback((permission: string): boolean => {
     if (!user) return false;
     // Admin has all permissions or wildcard
     if (
@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
     return user.permissions?.includes(permission) || false;
-  };
+  }, [user]);
 
   return (
     <AuthContext.Provider
