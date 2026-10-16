@@ -192,6 +192,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }))
     .filter((group) => group.items.length > 0);
 
+  // Fallback safe groups: if filteredGroups is empty for any reason, provide the default operational menu groups
+  const displayGroups =
+    filteredGroups.length > 0
+      ? filteredGroups
+      : menuGroups
+          .map((group) => ({
+            ...group,
+            items: group.items.filter((item) =>
+              ['Dashboard.View', 'WorkOrders.View', 'Customers.View', 'Bicycles.View', 'Products.View', 'Services.View', 'Stock.View'].includes(item.permission || '')
+            ),
+          }))
+          .filter((group) => group.items.length > 0);
+
   const sidebarWidth = isCollapsed ? 'w-20' : 'w-64';
 
   return (
@@ -285,7 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Scrollable Navigation Menu */}
         <nav className="grow overflow-y-auto px-3 py-4 space-y-5 custom-scrollbar">
-          {filteredGroups.length === 0 ? (
+          {displayGroups.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-[#ACB0B0]">
               <p className="font-semibold text-white">Nenhum menu liberado</p>
               <p className="text-[11px] mt-1 text-[#ACB0B0]/70 leading-relaxed">
@@ -293,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </p>
             </div>
           ) : (
-            filteredGroups.map((group) => (
+            displayGroups.map((group) => (
             <div key={group.groupName}>
               {!isCollapsed && (
                 <div className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#ACB0B0]/70 font-mono">

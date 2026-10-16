@@ -24,6 +24,90 @@ function getModelName(entity: string) {
   return Object.keys(prisma).find(k => k.toLowerCase() === cleanEntity || k.toLowerCase() === cleanEntity.slice(0, -1));
 }
 
+// Default role permissions matrix fallback
+const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
+  '1': ['*'],
+  'administrador': ['*'],
+  'admin': ['*'],
+  '2': [
+    'Dashboard.View', 'WorkOrders.View', 'WorkOrders.Create', 'WorkOrders.Update', 'WorkOrders.Cancel', 'WorkOrders.ChangeStatus', 'WorkOrders.Approve', 'WorkOrders.Convert', 'WorkOrders.Print',
+    'Sales.View', 'Sales.Create', 'Sales.Cancel', 'Sales.Print',
+    'Customers.View', 'Customers.Create', 'Customers.Update',
+    'Bicycles.View', 'Bicycles.Create', 'Bicycles.Update',
+    'Products.View', 'Products.Create', 'Products.Update',
+    'Services.View', 'Services.Create', 'Services.Update',
+    'Suppliers.View', 'Suppliers.Create', 'Suppliers.Update',
+    'Stock.View', 'Stock.Adjust',
+    'Reports.View',
+    'WorkshopSettings.View', 'WorkshopSettings.Update',
+    'Users.View'
+  ],
+  'gerente': [
+    'Dashboard.View', 'WorkOrders.View', 'WorkOrders.Create', 'WorkOrders.Update', 'WorkOrders.Cancel', 'WorkOrders.ChangeStatus', 'WorkOrders.Approve', 'WorkOrders.Convert', 'WorkOrders.Print',
+    'Sales.View', 'Sales.Create', 'Sales.Cancel', 'Sales.Print',
+    'Customers.View', 'Customers.Create', 'Customers.Update',
+    'Bicycles.View', 'Bicycles.Create', 'Bicycles.Update',
+    'Products.View', 'Products.Create', 'Products.Update',
+    'Services.View', 'Services.Create', 'Services.Update',
+    'Suppliers.View', 'Suppliers.Create', 'Suppliers.Update',
+    'Stock.View', 'Stock.Adjust',
+    'Reports.View',
+    'WorkshopSettings.View', 'WorkshopSettings.Update',
+    'Users.View'
+  ],
+  '3': [
+    'Dashboard.View', 'Customers.View', 'Customers.Create', 'Customers.Update',
+    'Bicycles.View', 'Bicycles.Create', 'Bicycles.Update',
+    'Products.View', 'Services.View',
+    'WorkOrders.View', 'WorkOrders.Create', 'WorkOrders.Update', 'WorkOrders.Print',
+    'Sales.View', 'Sales.Create', 'Sales.Print',
+    'Stock.View', 'WorkshopSettings.View'
+  ],
+  'atendente': [
+    'Dashboard.View', 'Customers.View', 'Customers.Create', 'Customers.Update',
+    'Bicycles.View', 'Bicycles.Create', 'Bicycles.Update',
+    'Products.View', 'Services.View',
+    'WorkOrders.View', 'WorkOrders.Create', 'WorkOrders.Update', 'WorkOrders.Print',
+    'Sales.View', 'Sales.Create', 'Sales.Print',
+    'Stock.View', 'WorkshopSettings.View'
+  ],
+  '4': [
+    'Dashboard.View', 'Customers.View', 'Bicycles.View', 'Products.View',
+    'Services.View', 'WorkOrders.View', 'WorkOrders.Update', 'WorkOrders.ChangeStatus',
+    'WorkOrders.Print', 'Stock.View', 'WorkshopSettings.View'
+  ],
+  'mecanico': [
+    'Dashboard.View', 'Customers.View', 'Bicycles.View', 'Products.View',
+    'Services.View', 'WorkOrders.View', 'WorkOrders.Update', 'WorkOrders.ChangeStatus',
+    'WorkOrders.Print', 'Stock.View', 'WorkshopSettings.View'
+  ],
+  '5': [
+    'Dashboard.View', 'Customers.View', 'WorkOrders.View', 'Sales.View',
+    'Sales.Create', 'Sales.Print', 'Reports.View'
+  ],
+  'financeiro': [
+    'Dashboard.View', 'Customers.View', 'WorkOrders.View', 'Sales.View',
+    'Sales.Create', 'Sales.Print', 'Reports.View'
+  ]
+};
+
+function getRolePermissions(roleId?: number | null, roleName?: string | null, dbPerms: string[] = []): string[] {
+  if (roleId === 1 || (roleName && roleName.toLowerCase().includes('admin'))) {
+    return dbPerms.length > 0 ? dbPerms : ['*'];
+  }
+  if (dbPerms.length > 0) {
+    return dbPerms;
+  }
+  const normRole = (roleName || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  const fallback = DEFAULT_ROLE_PERMISSIONS[normRole] || DEFAULT_ROLE_PERMISSIONS[String(roleId)] || [];
+  if (fallback.length > 0) return fallback;
+  return ['Dashboard.View', 'WorkOrders.View', 'Customers.View', 'Bicycles.View', 'Products.View', 'Services.View', 'Stock.View'];
+}
+
 export async function GET(request: Request, context: { params: Promise<{ slug: string[] }> }) {
   const params = await context.params;
   const { slug } = params;
@@ -33,12 +117,16 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     // Auth me
     if (path === 'auth/me') {
       const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
-      let userId = 1; // default fallback
+      let userId: number | null = null;
       if (authHeader && authHeader.includes('token_')) {
         try {
-          const match = authHeader.match(/token_([A-Za-z0-9+/=]+)/);
+          const match = authHeader.match(/token_([A-Za-z0-9+/=_-]+)/);
           if (match && match[1]) {
-            const parsed = JSON.parse(Buffer.from(match[1], 'base64').toString('utf-8'));
+            let base64Str = match[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (base64Str.length % 4) {
+              base64Str += '=';
+            }
+            const parsed = JSON.parse(Buffer.from(base64Str, 'base64').toString('utf-8'));
             if (parsed?.id) {
               userId = Number(parsed.id);
             }
@@ -48,8 +136,10 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
         }
       }
 
+      const targetUserId = userId || 1;
+
       const user = await prisma.users.findFirst({
-        where: { Id: userId },
+        where: { Id: targetUserId },
         include: {
           Roles: {
             include: {
@@ -65,8 +155,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
         return NextResponse.json({ success: false, message: 'Usuário não encontrado' }, { status: 404 });
       }
 
-      const perms = user.Roles?.RolePermissions?.map(rp => rp.Permissions.Code) || [];
-      const isRoleAdmin = user.RoleId === 1 || user.Roles?.Name?.toLowerCase() === 'administrador';
+      const dbPerms = user.Roles?.RolePermissions?.map(rp => rp.Permissions?.Code || (rp.Permissions as any)?.Name).filter(Boolean) || [];
+      const perms = getRolePermissions(user.RoleId, user.Roles?.Name, dbPerms);
 
       return NextResponse.json({
         success: true,
@@ -78,7 +168,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
           isActive: user.IsActive,
           roleId: user.RoleId,
           roleName: user.Roles?.Name || 'Colaborador',
-          permissions: isRoleAdmin ? (perms.length > 0 ? perms : ['*']) : perms,
+          permissions: perms,
           lastLoginAt: user.LastLoginAt?.toISOString() || new Date().toISOString(),
           createdAt: user.CreatedAt?.toISOString() || new Date().toISOString()
         }
@@ -1097,9 +1187,8 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       });
       
       if (user) {
-        const userPermissions = user.Roles?.RolePermissions?.map(rp => rp.Permissions.Code) || [];
-        const isRoleAdmin = user.RoleId === 1 || user.Roles?.Name?.toLowerCase() === 'administrador';
-        const perms = isRoleAdmin ? (userPermissions.length > 0 ? userPermissions : ['*']) : userPermissions;
+        const dbPerms = user.Roles?.RolePermissions?.map(rp => rp.Permissions?.Code || (rp.Permissions as any)?.Name).filter(Boolean) || [];
+        const perms = getRolePermissions(user.RoleId, user.Roles?.Name, dbPerms);
 
         const tokenPayload = Buffer.from(JSON.stringify({ id: user.Id, username: user.Username })).toString('base64');
         return NextResponse.json({
@@ -1127,7 +1216,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
           success: true,
           data: {
             accessToken: `token_${adminPayload}`,
-            user: { id: 1, name: 'Admin', email: 'admin@admin.com', roleName: 'Administrador', permissions: ['*'] }
+            user: { id: 1, name: 'Admin', email: 'admin@admin.com', roleId: 1, roleName: 'Administrador', permissions: ['*'] }
           }
         });
       }
