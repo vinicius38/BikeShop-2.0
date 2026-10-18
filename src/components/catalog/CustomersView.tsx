@@ -23,8 +23,10 @@ import { Pagination } from '../common/Pagination';
 import { Modal } from '../common/Modal';
 import { Badge } from '../common/Badge';
 import { maskCpfCnpj, maskCellPhone, maskPhone, maskCep } from '../../utils/maskUtils';
+import { useAuth } from '../../context/AuthContext';
 
 export const CustomersView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -245,13 +247,15 @@ export const CustomersView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Cliente
-        </button>
+        {hasPermission('Customers.Create') && (
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Cliente
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -335,13 +339,15 @@ export const CustomersView: React.FC = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleOpenEdit(c)}
-                          className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
-                          title="Editar Cadastro"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+                        {hasPermission('Customers.Update') && (
+                          <button
+                            onClick={() => handleOpenEdit(c)}
+                            className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
+                            title="Editar Cadastro"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

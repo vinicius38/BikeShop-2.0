@@ -44,7 +44,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { settings, logoUrl, workshopName, tradeName } = useWorkshop();
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -145,20 +145,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </div>
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-            <button
-              onClick={() => onNavigate('work-orders')}
-              className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white text-xs font-semibold shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer"
-            >
-              <ClipboardList className="w-4 h-4" />
-              Nova Ordem de Serviço
-            </button>
-            <button
-              onClick={() => onNavigate('sales')}
-              className="px-4 py-2.5 rounded-lg bg-[#121E30] hover:bg-[#18263A] border border-[#1F2E45] text-white text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer"
-            >
-              <ShoppingBag className="w-4 h-4 text-[#EF7410]" />
-              Nova Venda
-            </button>
+            {(hasPermission('WorkOrders.Create') || hasPermission('WorkOrders.View')) && (
+              <button
+                onClick={() => onNavigate('work-orders')}
+                className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white text-xs font-semibold shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer"
+              >
+                <ClipboardList className="w-4 h-4" />
+                Nova Ordem de Serviço
+              </button>
+            )}
+            {(hasPermission('Sales.Create') || hasPermission('Sales.View')) && (
+              <button
+                onClick={() => onNavigate('sales')}
+                className="px-4 py-2.5 rounded-lg bg-[#121E30] hover:bg-[#18263A] border border-[#1F2E45] text-white text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4 text-[#EF7410]" />
+                Nova Venda
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -171,7 +175,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           value={isLoading ? '...' : totalCustomers ?? 0}
           subtitle="Base total de clientes ativos"
           icon={Users}
-          onClick={() => onNavigate('customers')}
+          onClick={hasPermission('Customers.View') ? () => onNavigate('customers') : undefined}
         />
 
         {/* Bicicletas em Oficina */}
@@ -181,7 +185,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           subtitle="Em manutenção ou aguardando peças"
           icon={Bike}
           highlight={true}
-          onClick={() => onNavigate('work-orders')}
+          onClick={hasPermission('WorkOrders.View') ? () => onNavigate('work-orders') : undefined}
         />
 
         <StatCard
@@ -189,7 +193,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           value={isLoading ? '...' : dashboardData?.workOrdersThisMonthCount ?? 0}
           subtitle="Total abertas no período"
           icon={ClipboardList}
-          onClick={() => onNavigate('work-orders')}
+          onClick={hasPermission('WorkOrders.View') ? () => onNavigate('work-orders') : undefined}
         />
 
         {/* Vendas do Mês */}
@@ -205,7 +209,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           }
           subtitle={`Hoje: R$ ${(dashboardData?.salesTodayAmount ?? 0).toFixed(2)}`}
           icon={DollarSign}
-          onClick={() => onNavigate('sales')}
+          onClick={hasPermission('Sales.View') ? () => onNavigate('sales') : undefined}
         />
       </div>
 
@@ -234,13 +238,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                   <p className="text-xs text-[#ACB0B0] font-mono">{tradeName}</p>
                 </div>
               </div>
-              <button
-                onClick={() => onNavigate('settings-workshop')}
-                className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#121E30] transition-colors"
-                title="Editar Configurações da Oficina"
-              >
-                <Building2 className="w-4 h-4" />
-              </button>
+              {hasPermission('WorkshopSettings.View') && (
+                <button
+                  onClick={() => onNavigate('settings-workshop')}
+                  className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#121E30] transition-colors cursor-pointer"
+                  title="Editar Configurações da Oficina"
+                >
+                  <Building2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             <div className="py-4 space-y-3 text-xs">
@@ -277,12 +283,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
               Oficina Operacional
             </span>
-            <button
-              onClick={() => onNavigate('settings-workshop')}
-              className="text-xs font-semibold text-[#EF7410] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              Configurar <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            {hasPermission('WorkshopSettings.View') ? (
+              <button
+                onClick={() => onNavigate('settings-workshop')}
+                className="text-xs font-semibold text-[#EF7410] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Configurar <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <span className="text-[10px] text-[#ACB0B0]/60">Modo Operacional</span>
+            )}
           </div>
         </div>
 
@@ -457,8 +467,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             {recentWorkOrders.slice(0, 3).map((os) => (
               <div
                 key={`act-os-${os.id}`}
-                onClick={() => onNavigate('work-orders', os.id)}
-                className="flex items-start gap-3 p-2.5 rounded-lg bg-[#121E30]/50 hover:bg-[#18263A] border border-[#1F2E45] cursor-pointer transition-colors"
+                onClick={hasPermission('WorkOrders.View') ? () => onNavigate('work-orders', os.id) : undefined}
+                className={`flex items-start gap-3 p-2.5 rounded-lg bg-[#121E30]/50 hover:bg-[#18263A] border border-[#1F2E45] transition-colors ${hasPermission('WorkOrders.View') ? 'cursor-pointer' : ''}`}
               >
                 <div className="p-2 rounded-md bg-[#EF7410]/15 text-[#EF7410] shrink-0">
                   <Wrench className="w-3.5 h-3.5" />
@@ -485,8 +495,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             {recentSales.slice(0, 2).map((sale) => (
               <div
                 key={`act-sale-${sale.id}`}
-                onClick={() => onNavigate('sales', sale.id)}
-                className="flex items-start gap-3 p-2.5 rounded-lg bg-[#121E30]/50 hover:bg-[#18263A] border border-[#1F2E45] cursor-pointer transition-colors"
+                onClick={hasPermission('Sales.View') ? () => onNavigate('sales', sale.id) : undefined}
+                className={`flex items-start gap-3 p-2.5 rounded-lg bg-[#121E30]/50 hover:bg-[#18263A] border border-[#1F2E45] transition-colors ${hasPermission('Sales.View') ? 'cursor-pointer' : ''}`}
               >
                 <div className="p-2 rounded-md bg-[#22C55E]/15 text-[#22C55E] shrink-0">
                   <ShoppingBag className="w-3.5 h-3.5" />
@@ -514,14 +524,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             )}
           </div>
 
-          <div className="pt-3 border-t border-[#1F2E45] text-right">
-            <button
-              onClick={() => onNavigate('work-orders')}
-              className="text-xs font-semibold text-[#EF7410] hover:underline inline-flex items-center gap-1 cursor-pointer"
-            >
-              Ver todas as ordens <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {hasPermission('WorkOrders.View') && (
+            <div className="pt-3 border-t border-[#1F2E45] text-right">
+              <button
+                onClick={() => onNavigate('work-orders')}
+                className="text-xs font-semibold text-[#EF7410] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Ver todas as ordens <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

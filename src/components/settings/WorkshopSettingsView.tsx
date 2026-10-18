@@ -17,8 +17,10 @@ import { useWorkshop } from '../../context/WorkshopContext';
 import { workshopService } from '../../services/workshopService';
 import { WorkshopSettings } from '../../types/api';
 import { maskCpfCnpj, maskCellPhone, maskPhoneOrCell, maskCep } from '../../utils/maskUtils';
+import { useAuth } from '../../context/AuthContext';
 
 export const WorkshopSettingsView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const { settings, logoUrl, workshopName, tradeName, refreshSettings } = useWorkshop();
 
   const [formData, setFormData] = useState<Partial<WorkshopSettings>>({});
@@ -120,19 +122,21 @@ export const WorkshopSettingsView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-5 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-bold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          {isSaving ? (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin flex-shrink-0" />
-          ) : (
-            <Save className="w-4 h-4 flex-shrink-0" />
-          )}
-          <span>Salvar Configurações</span>
-        </button>
+        {hasPermission('WorkshopSettings.Update') && (
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-5 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-bold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            {isSaving ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin flex-shrink-0" />
+            ) : (
+              <Save className="w-4 h-4 flex-shrink-0" />
+            )}
+            <span>Salvar Configurações</span>
+          </button>
+        )}
       </div>
 
       {successMessage && (
@@ -177,33 +181,35 @@ export const WorkshopSettingsView: React.FC = () => {
                 A imagem enviada será exibida no cabeçalho do sistema, sidebar e nos documentos
                 impressos de Ordem de Serviço e Comprovante de Venda.
               </p>
-              <div className="flex flex-wrap items-center gap-2 pt-1 justify-center sm:justify-start">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                  id="logo-upload-input"
-                />
-                <label
-                  htmlFor="logo-upload-input"
-                  className="px-3.5 py-2 rounded-lg bg-[#121E30] hover:bg-[#18263A] border border-[#1F2E45] text-white font-semibold cursor-pointer transition-colors flex items-center gap-1.5"
-                >
-                  <Upload className="w-3.5 h-3.5 text-[#EF7410]" />
-                  {isUploadingLogo ? 'Enviando...' : 'Carregar Nova Logo'}
-                </label>
-                {settings?.hasLogo && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteLogo}
-                    className="px-3 py-2 rounded-lg bg-[#EF4444]/15 hover:bg-[#EF4444]/25 border border-[#EF4444]/30 text-[#EF4444] font-semibold transition-colors flex items-center gap-1.5"
+              {hasPermission('WorkshopSettings.Update') && (
+                <div className="flex flex-wrap items-center gap-2 pt-1 justify-center sm:justify-start">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    id="logo-upload-input"
+                  />
+                  <label
+                    htmlFor="logo-upload-input"
+                    className="px-3.5 py-2 rounded-lg bg-[#121E30] hover:bg-[#18263A] border border-[#1F2E45] text-white font-semibold cursor-pointer transition-colors flex items-center gap-1.5"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Remover
-                  </button>
-                )}
-              </div>
+                    <Upload className="w-3.5 h-3.5 text-[#EF7410]" />
+                    {isUploadingLogo ? 'Enviando...' : 'Carregar Nova Logo'}
+                  </label>
+                  {settings?.hasLogo && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteLogo}
+                      className="px-3 py-2 rounded-lg bg-[#EF4444]/15 hover:bg-[#EF4444]/25 border border-[#EF4444]/30 text-[#EF4444] font-semibold transition-colors flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remover
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

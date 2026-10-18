@@ -17,8 +17,10 @@ import { Pagination } from '../common/Pagination';
 import { Modal } from '../common/Modal';
 import { Badge } from '../common/Badge';
 import { maskCurrency, formatCurrencyTwoDecimals, parseCurrency } from '../../utils/maskUtils';
+import { useAuth } from '../../context/AuthContext';
 
 export const ProductsView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -216,13 +218,15 @@ export const ProductsView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Produto
-        </button>
+        {hasPermission('Products.Create') && (
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Produto
+          </button>
+        )}
       </div>
 
       {/* Filter toolbar */}
@@ -351,20 +355,24 @@ export const ProductsView: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => setAdjustModalProduct(p)}
-                            className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
-                            title="Ajustar Estoque"
-                          >
-                            <ArrowUpDown className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(p)}
-                            className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-white hover:bg-[#18263A]"
-                            title="Editar Produto"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {hasPermission('Stock.Adjust') && (
+                            <button
+                              onClick={() => setAdjustModalProduct(p)}
+                              className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
+                              title="Ajustar Estoque"
+                            >
+                              <ArrowUpDown className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission('Products.Update') && (
+                            <button
+                              onClick={() => handleOpenEdit(p)}
+                              className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-white hover:bg-[#18263A]"
+                              title="Editar Produto"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

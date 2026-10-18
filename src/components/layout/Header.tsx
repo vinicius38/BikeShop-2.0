@@ -17,7 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   hasNotifications = false,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
@@ -96,28 +96,34 @@ export const Header: React.FC<HeaderProps> = ({
                   <p className="text-[11px] text-[#ACB0B0] truncate font-mono">{user?.email}</p>
                 </div>
 
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      onNavigate('settings-workshop');
-                      setIsDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[#ACB0B0] hover:text-white hover:bg-[#121E30] transition-colors"
-                  >
-                    <Settings className="w-4 h-4 text-[#EF7410]" />
-                    Configurações da Oficina
-                  </button>
-                  <button
-                    onClick={() => {
-                      onNavigate('users');
-                      setIsDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[#ACB0B0] hover:text-white hover:bg-[#121E30] transition-colors"
-                  >
-                    <User className="w-4 h-4 text-[#3B82F6]" />
-                    Gerenciar Usuários
-                  </button>
-                </div>
+                {(hasPermission('WorkshopSettings.View') || hasPermission('Users.View')) && (
+                  <div className="py-1">
+                    {hasPermission('WorkshopSettings.View') && (
+                      <button
+                        onClick={() => {
+                          onNavigate('settings-workshop');
+                          setIsDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[#ACB0B0] hover:text-white hover:bg-[#121E30] transition-colors"
+                      >
+                        <Settings className="w-4 h-4 text-[#EF7410]" />
+                        Configurações da Oficina
+                      </button>
+                    )}
+                    {hasPermission('Users.View') && (
+                      <button
+                        onClick={() => {
+                          onNavigate('users');
+                          setIsDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[#ACB0B0] hover:text-white hover:bg-[#121E30] transition-colors"
+                      >
+                        <User className="w-4 h-4 text-[#3B82F6]" />
+                        Gerenciar Usuários
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 <div className="pt-1 border-t border-[#1F2E45]">
                   <button

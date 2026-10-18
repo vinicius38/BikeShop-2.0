@@ -19,6 +19,24 @@ import { WorkshopSettingsView } from './components/settings/WorkshopSettingsView
 import { UsersView } from './components/settings/UsersView';
 import { PermissionsView } from './components/settings/PermissionsView';
 
+const VIEW_PERMISSIONS: Record<string, string> = {
+  'dashboard': 'Dashboard.View',
+  'work-orders': 'WorkOrders.View',
+  'sales': 'Sales.View',
+  'customers': 'Customers.View',
+  'bicycles': 'Bicycles.View',
+  'products': 'Products.View',
+  'services': 'Services.View',
+  'suppliers': 'Suppliers.View',
+  'stock': 'Stock.View',
+  'stock-movements': 'Stock.View',
+  'financial': 'Sales.View',
+  'reports': 'Reports.View',
+  'settings-workshop': 'WorkshopSettings.View',
+  'users': 'Users.View',
+  'permissions': 'Users.View',
+};
+
 const MainAppContent: React.FC = () => {
   const { user, isAuthenticated, isLoading, hasPermission } = useAuth();
   const [currentView, setCurrentView] = useState<string>('dashboard');
@@ -28,28 +46,10 @@ const MainAppContent: React.FC = () => {
   React.useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const viewPermissions: Record<string, string> = {
-      'dashboard': 'Dashboard.View',
-      'work-orders': 'WorkOrders.View',
-      'sales': 'Sales.View',
-      'customers': 'Customers.View',
-      'bicycles': 'Bicycles.View',
-      'products': 'Products.View',
-      'services': 'Services.View',
-      'suppliers': 'Suppliers.View',
-      'stock': 'Stock.View',
-      'stock-movements': 'Stock.View',
-      'financial': 'Sales.View',
-      'reports': 'Reports.View',
-      'settings-workshop': 'WorkshopSettings.View',
-      'users': 'Users.View',
-      'permissions': 'Users.View',
-    };
-
-    const requiredPermission = viewPermissions[currentView];
+    const requiredPermission = VIEW_PERMISSIONS[currentView];
     if (requiredPermission && !hasPermission(requiredPermission)) {
-      const firstValidView = Object.keys(viewPermissions).find((v) =>
-        hasPermission(viewPermissions[v])
+      const firstValidView = Object.keys(VIEW_PERMISSIONS).find((v) =>
+        hasPermission(VIEW_PERMISSIONS[v])
       );
       if (firstValidView) {
         setCurrentView(firstValidView);
@@ -75,6 +75,10 @@ const MainAppContent: React.FC = () => {
   }
 
   const handleNavigate = (view: string, itemId?: number) => {
+    const requiredPermission = VIEW_PERMISSIONS[view];
+    if (requiredPermission && !hasPermission(requiredPermission)) {
+      return;
+    }
     setCurrentView(view);
     setTargetItemId(itemId || null);
     window.scrollTo({ top: 0, behavior: 'smooth' });

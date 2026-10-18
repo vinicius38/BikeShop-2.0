@@ -821,13 +821,17 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
               delete transformedResult.addresses;
             }
           } else if (modelName === 'users') {
+            delete transformedResult.passwordHash;
+            delete transformedResult.password;
+            let perms: string[] = [];
             if (transformedResult.roles) {
               transformedResult.roleName = transformedResult.roles.name;
-              transformedResult.permissions = transformedResult.roles.rolePermissions
+              perms = transformedResult.roles.rolePermissions
                 ?.map((rp: any) => rp.permissions?.code || rp.permissions?.name)
                 .filter(Boolean) || [];
               delete transformedResult.roles;
             }
+            transformedResult.permissions = getRolePermissions(transformedResult.roleId, transformedResult.roleName, perms);
           } else if (modelName === 'roles') {
             if (transformedResult.rolePermissions) {
               transformedResult.permissions = transformedResult.rolePermissions
@@ -1113,6 +1117,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
                 });
               } else if (modelName === 'users') {
                 transformedResult = transformedResult.map((u: any) => {
+                  delete u.passwordHash;
+                  delete u.password;
                   let perms: string[] = [];
                   if (u.roles) {
                     u.roleName = u.roles.name;
@@ -1130,7 +1136,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
                         .filter(Boolean);
                     }
                   }
-                  u.permissions = perms;
+                  u.permissions = getRolePermissions(u.roleId, u.roleName, perms);
                   return u;
                 });
               } else if (modelName === 'roles') {
@@ -1642,6 +1648,16 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
           WorkOrders: true,
           Users_Sales_CreatedByUserIdToUsers: true
         };
+      } else if (modelName === 'users') {
+        includeConfig = {
+          Roles: {
+            include: {
+              RolePermissions: {
+                include: { Permissions: true }
+              }
+            }
+          }
+        };
       }
 
       const result = await (prisma as any)[modelName].create({ 
@@ -1682,6 +1698,32 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
           })) || []
         };
         return NextResponse.json({ success: true, data: transformedResult });
+      }
+
+      if (modelName === 'users') {
+        const transformedUser = toCamelCase(result);
+        delete transformedUser.passwordHash;
+        delete transformedUser.password;
+        let perms: string[] = [];
+        if (transformedUser.roles) {
+          transformedUser.roleName = transformedUser.roles.name;
+          if (transformedUser.roles.rolePermissions && Array.isArray(transformedUser.roles.rolePermissions)) {
+            perms = transformedUser.roles.rolePermissions
+              .map((rp: any) => rp.permissions?.code || rp.permissions?.name)
+              .filter(Boolean);
+          }
+          delete transformedUser.roles;
+        } else if (transformedUser.Roles) {
+          transformedUser.roleName = transformedUser.Roles.Name;
+          if (transformedUser.Roles.RolePermissions && Array.isArray(transformedUser.Roles.RolePermissions)) {
+            perms = transformedUser.Roles.RolePermissions
+              .map((rp: any) => rp.Permissions?.Code || rp.Permissions?.Name)
+              .filter(Boolean);
+          }
+          delete transformedUser.Roles;
+        }
+        transformedUser.permissions = getRolePermissions(transformedUser.roleId, transformedUser.roleName, perms);
+        return NextResponse.json({ success: true, data: transformedUser });
       }
 
       return NextResponse.json({ success: true, data: toCamelCase(result) });
@@ -1892,7 +1934,51 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
           }
         }
 
-        const result = await (prisma as any)[modelName].update({ where: { Id: id }, data: pascalBody });
+        let includeConfig: any = undefined;
+        if (modelName === 'users') {
+          includeConfig = {
+            Roles: {
+              include: {
+                RolePermissions: {
+                  include: { Permissions: true }
+                }
+              }
+            }
+          };
+        }
+
+        const result = await (prisma as any)[modelName].update({ 
+          where: { Id: id }, 
+          data: pascalBody,
+          include: includeConfig
+        });
+
+        if (modelName === 'users') {
+          const transformedUser = toCamelCase(result);
+          delete transformedUser.passwordHash;
+          delete transformedUser.password;
+          let perms: string[] = [];
+          if (transformedUser.roles) {
+            transformedUser.roleName = transformedUser.roles.name;
+            if (transformedUser.roles.rolePermissions && Array.isArray(transformedUser.roles.rolePermissions)) {
+              perms = transformedUser.roles.rolePermissions
+                .map((rp: any) => rp.permissions?.code || rp.permissions?.name)
+                .filter(Boolean);
+            }
+            delete transformedUser.roles;
+          } else if (transformedUser.Roles) {
+            transformedUser.roleName = transformedUser.Roles.Name;
+            if (transformedUser.Roles.RolePermissions && Array.isArray(transformedUser.Roles.RolePermissions)) {
+              perms = transformedUser.Roles.RolePermissions
+                .map((rp: any) => rp.Permissions?.Code || rp.Permissions?.Name)
+                .filter(Boolean);
+            }
+            delete transformedUser.Roles;
+          }
+          transformedUser.permissions = getRolePermissions(transformedUser.roleId, transformedUser.roleName, perms);
+          return NextResponse.json({ success: true, data: transformedUser });
+        }
+
         return NextResponse.json({ success: true, data: toCamelCase(result) });
       }
     }
@@ -1957,13 +2043,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ slug:
             where: { Id: id },
             data: { IsActive: true, UpdatedAt: new Date() }
           });
-          return NextResponse.json({ success: true, data: toCamelCase(user) });
+          const transformed = toCamelCase(user);
+          delete transformed.passwordHash;
+          delete transformed.password;
+          return NextResponse.json({ success: true, data: transformed });
         } else if (action === 'deactivate') {
           const user = await prisma.users.update({
             where: { Id: id },
             data: { IsActive: false, UpdatedAt: new Date() }
           });
-          return NextResponse.json({ success: true, data: toCamelCase(user) });
+          const transformed = toCamelCase(user);
+          delete transformed.passwordHash;
+          delete transformed.password;
+          return NextResponse.json({ success: true, data: transformed });
         }
       }
     }

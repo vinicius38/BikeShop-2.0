@@ -82,13 +82,37 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   ]
 };
 
+const ROLE_NAMES_BY_ID: Record<number, string> = {
+  1: 'Administrador',
+  2: 'Gerente',
+  3: 'Atendente',
+  4: 'Mecânico',
+  5: 'Financeiro'
+};
+
 function ensureUserPermissions(userData: User | null): User | null {
   if (!userData) return null;
-  const normRole = (userData.roleName || '')
+
+  // Infer missing roleName if roleId is known
+  let roleName = userData.roleName;
+  if (!roleName && userData.roleId && ROLE_NAMES_BY_ID[userData.roleId]) {
+    roleName = ROLE_NAMES_BY_ID[userData.roleId];
+  }
+
+  const normRole = (roleName || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+
+  // Admin always has wildcard
+  if (userData.roleId === 1 || normRole === 'administrador' || normRole === 'admin') {
+    return {
+      ...userData,
+      roleName: roleName || 'Administrador',
+      permissions: (userData.permissions && userData.permissions.length > 0) ? userData.permissions : ['*']
+    };
+  }
 
   if (!userData.permissions || !Array.isArray(userData.permissions) || userData.permissions.length === 0) {
     const defaults = DEFAULT_ROLE_PERMISSIONS[normRole] || DEFAULT_ROLE_PERMISSIONS[String(userData.roleId)] || [];
@@ -97,10 +121,15 @@ function ensureUserPermissions(userData: User | null): User | null {
       : ['Dashboard.View', 'WorkOrders.View', 'Customers.View', 'Bicycles.View', 'Products.View', 'Services.View', 'Stock.View'];
     return {
       ...userData,
+      roleName: roleName || 'Colaborador',
       permissions: fallbackPerms
     };
   }
-  return userData;
+
+  return {
+    ...userData,
+    roleName: roleName || userData.roleName || 'Colaborador'
+  };
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -209,13 +238,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const targetPerm = (permission || '').toLowerCase().trim();
     if (!targetPerm) return false;
+    const targetClean = targetPerm.replace(/[^a-z0-9]/g, '');
 
-    // 2. Direct check on user permissions array (case, accent, and whitespace insensitive)
+    // Every authenticated user has basic dashboard view access
+    if (targetClean === 'dashboardview') {
+      return true;
+    }
+
+    // 2. Direct check on user permissions array (case, accent, and punctuation insensitive)
     if (Array.isArray(user.permissions) && user.permissions.length > 0) {
+      if (user.permissions.includes('*')) return true;
       const match = user.permissions.some((p) => {
         if (typeof p !== 'string') return false;
         const normP = p.toLowerCase().trim();
-        return normP === '*' || normP === targetPerm || normP.replace(/\s+/g, '') === targetPerm.replace(/\s+/g, '');
+        return normP === targetPerm || normP.replace(/[^a-z0-9]/g, '') === targetClean;
       });
       if (match) return true;
     }
@@ -225,21 +261,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const defaults = DEFAULT_ROLE_PERMISSIONS[roleKey] || DEFAULT_ROLE_PERMISSIONS[String(user.roleId)];
     if (defaults) {
       if (defaults.includes('*')) return true;
-      if (defaults.some((p) => p.toLowerCase().trim() === targetPerm)) return true;
-    }
-
-    // 4. Base default access: Any active collaborator in the workshop has basic operational access
-    const baseViews = [
-      'dashboard.view',
-      'workorders.view',
-      'customers.view',
-      'bicycles.view',
-      'products.view',
-      'services.view',
-      'stock.view'
-    ];
-    if (baseViews.includes(targetPerm)) {
-      return true;
+      if (defaults.some((p) => {
+        const normP = p.toLowerCase().trim();
+        return normP === targetPerm || normP.replace(/[^a-z0-9]/g, '') === targetClean;
+      })) return true;
     }
 
     return false;

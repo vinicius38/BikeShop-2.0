@@ -6,8 +6,10 @@ import { Bicycle, Customer } from '../../types/api';
 import { Pagination } from '../common/Pagination';
 import { Modal } from '../common/Modal';
 import { maskCpfCnpj } from '../../utils/maskUtils';
+import { useAuth } from '../../context/AuthContext';
 
 export const BicyclesView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [bicycles, setBicycles] = useState<Bicycle[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
 
@@ -132,13 +134,15 @@ export const BicyclesView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Nova Bicicleta
-        </button>
+        {hasPermission('Bicycles.Create') && (
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Bicicleta
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -208,13 +212,15 @@ export const BicyclesView: React.FC = () => {
                       {b.serialNumber || 'N/A'}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => handleOpenEdit(b)}
-                        className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
-                        title="Editar Bicicleta"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      {hasPermission('Bicycles.Update') && (
+                        <button
+                          onClick={() => handleOpenEdit(b)}
+                          className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
+                          title="Editar Bicicleta"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

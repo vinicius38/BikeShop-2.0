@@ -5,8 +5,10 @@ import { ServiceItem } from '../../types/api';
 import { Pagination } from '../common/Pagination';
 import { Modal } from '../common/Modal';
 import { maskCurrency, formatCurrencyTwoDecimals, parseCurrency } from '../../utils/maskUtils';
+import { useAuth } from '../../context/AuthContext';
 
 export const ServicesView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -117,13 +119,15 @@ export const ServicesView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Serviço
-        </button>
+        {hasPermission('Services.Create') && (
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Serviço
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -194,13 +198,15 @@ export const ServicesView: React.FC = () => {
                       R$ {formatCurrencyTwoDecimals(s.salePrice ?? s.price ?? 0)}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => handleOpenEdit(s)}
-                        className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
-                        title="Editar Serviço"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      {hasPermission('Services.Update') && (
+                        <button
+                          onClick={() => handleOpenEdit(s)}
+                          className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
+                          title="Editar Serviço"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

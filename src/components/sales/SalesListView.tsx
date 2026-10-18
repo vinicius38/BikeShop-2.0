@@ -21,6 +21,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 import { saleService } from '../../services/saleService';
 import { Sale } from '../../types/api';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { Pagination } from '../common/Pagination';
@@ -38,6 +39,7 @@ export const SalesListView: React.FC<SalesListViewProps> = ({
   initialSaleId,
   onNavigateToWorkOrder,
 }) => {
+  const { hasPermission } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -117,13 +119,15 @@ export const SalesListView: React.FC<SalesListViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewSaleOpen(true)}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Nova Venda
-        </button>
+        {hasPermission('Sales.Create') && (
+          <button
+            onClick={() => setIsNewSaleOpen(true)}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Venda
+          </button>
+        )}
       </div>
 
       {/* Toolbar & Filters */}
@@ -284,28 +288,32 @@ export const SalesListView: React.FC<SalesListViewProps> = ({
                       </td>
                       <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPrintSale(sale);
-                            }}
-                            className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A] transition-colors cursor-pointer"
-                            title="Imprimir Comprovante de Venda"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPrintSale(sale);
-                            }}
-                            className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#22C55E] hover:bg-[#22C55E]/15 transition-colors cursor-pointer"
-                            title="Enviar para WhatsApp"
-                          >
-                            <WhatsAppIcon className="w-4 h-4" />
-                          </button>
+                          {hasPermission('Sales.Print') && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPrintSale(sale);
+                                }}
+                                className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A] transition-colors cursor-pointer"
+                                title="Imprimir Comprovante de Venda"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPrintSale(sale);
+                                }}
+                                className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#22C55E] hover:bg-[#22C55E]/15 transition-colors cursor-pointer"
+                                title="Enviar para WhatsApp"
+                              >
+                                <WhatsAppIcon className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
 
-                          {sale.status !== 'Cancelled' && sale.status !== '3' && sale.status !== 3 && (
+                          {sale.status !== 'Cancelled' && sale.status !== '3' && sale.status !== 3 && hasPermission('Sales.Cancel') && (
                             <button
                               onClick={() => {
                                 setSaleToCancel(sale);

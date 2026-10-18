@@ -25,6 +25,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 import { workOrderService } from '../../services/workOrderService';
 import { WorkOrder, WorkOrderStatus } from '../../types/api';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../common/Badge';
 import { Pagination } from '../common/Pagination';
 import { EmptyState } from '../common/EmptyState';
@@ -41,6 +42,7 @@ export const WorkOrdersListView: React.FC<WorkOrdersListViewProps> = ({
   initialWorkOrderId,
   onNavigateToSale,
 }) => {
+  const { hasPermission } = useAuth();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -105,13 +107,15 @@ export const WorkOrdersListView: React.FC<WorkOrdersListViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => setIsWizardOpen(true)}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Nova OS
-        </button>
+        {hasPermission('WorkOrders.Create') && (
+          <button
+            onClick={() => setIsWizardOpen(true)}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Nova OS
+          </button>
+        )}
       </div>
 
       {/* Filter Toolbar */}
@@ -259,26 +263,30 @@ export const WorkOrdersListView: React.FC<WorkOrdersListViewProps> = ({
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPrintWorkOrder(os);
-                          }}
-                          className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A] transition-colors"
-                          title="Imprimir OS"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPrintWorkOrder(os);
-                          }}
-                          className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#22C55E] hover:bg-[#22C55E]/15 transition-colors"
-                          title="Enviar para WhatsApp"
-                        >
-                          <WhatsAppIcon className="w-4 h-4" />
-                        </button>
+                        {hasPermission('WorkOrders.Print') && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrintWorkOrder(os);
+                              }}
+                              className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A] transition-colors"
+                              title="Imprimir OS"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrintWorkOrder(os);
+                              }}
+                              className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#22C55E] hover:bg-[#22C55E]/15 transition-colors"
+                              title="Enviar para WhatsApp"
+                            >
+                              <WhatsAppIcon className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

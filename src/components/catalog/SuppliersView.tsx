@@ -5,8 +5,10 @@ import { Supplier } from '../../types/api';
 import { Pagination } from '../common/Pagination';
 import { Modal } from '../common/Modal';
 import { maskCnpj, maskPhoneOrCell, maskCellPhone, maskCep } from '../../utils/maskUtils';
+import { useAuth } from '../../context/AuthContext';
 
 export const SuppliersView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -144,13 +146,15 @@ export const SuppliersView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Fornecedor
-        </button>
+        {hasPermission('Suppliers.Create') && (
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Fornecedor
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -219,13 +223,15 @@ export const SuppliersView: React.FC = () => {
                       {s.address ? `${s.address.city}/${s.address.state}` : 'N/A'}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => handleOpenEdit(s)}
-                        className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
-                        title="Editar Fornecedor"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      {hasPermission('Suppliers.Update') && (
+                        <button
+                          onClick={() => handleOpenEdit(s)}
+                          className="p-1.5 rounded-lg text-[#ACB0B0] hover:text-[#EF7410] hover:bg-[#18263A]"
+                          title="Editar Fornecedor"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

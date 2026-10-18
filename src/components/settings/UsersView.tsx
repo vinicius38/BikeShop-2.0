@@ -3,8 +3,10 @@ import { UserCog, Plus, CheckCircle2, XCircle, Shield, User, Lock, Key, ChevronD
 import { userService, CreateUserDto } from '../../services/userService';
 import { User as UserType, Role } from '../../types/api';
 import { Modal } from '../common/Modal';
+import { useAuth } from '../../context/AuthContext';
 
 export const UsersView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [users, setUsers] = useState<UserType[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -100,25 +102,27 @@ export const UsersView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingUser(null);
-            setFormData({
-              name: '',
-              username: '',
-              email: '',
-              password: '',
-              roleId: roles[0]?.id || 1,
-            });
-            setShowPermDetails(false);
-            setErrorMsg(null);
-            setIsModalOpen(true);
-          }}
-          className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Usuário
-        </button>
+        {hasPermission('Users.Create') && (
+          <button
+            onClick={() => {
+              setEditingUser(null);
+              setFormData({
+                name: '',
+                username: '',
+                email: '',
+                password: '',
+                roleId: roles[0]?.id || 1,
+              });
+              setShowPermDetails(false);
+              setErrorMsg(null);
+              setIsModalOpen(true);
+            }}
+            className="px-4 py-2.5 rounded-lg bg-[#EF7410] hover:bg-[#EF7410]/90 text-white font-semibold text-xs shadow-lg shadow-[#EF7410]/20 transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Usuário
+          </button>
+        )}
       </div>
 
       {/* Users Table */}
@@ -195,7 +199,7 @@ export const UsersView: React.FC = () => {
                       )}
                     </td>
                     <td className="py-3 px-4 text-center flex items-center justify-center gap-2">
-                      {u.id !== 1 && (
+                      {u.id !== 1 && hasPermission('Users.Update') && (
                         <>
                           <button
                             onClick={() => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Check, Key, Save } from 'lucide-react';
 import { userService } from '../../services/userService';
 import { Permission, Role } from '../../types/api';
+import { useAuth } from '../../context/AuthContext';
 
 const MODULE_TRANSLATIONS: Record<string, string> = {
   "Geral": "Geral",
@@ -21,6 +22,7 @@ const MODULE_TRANSLATIONS: Record<string, string> = {
 };
 
 export const PermissionsView: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -116,24 +118,26 @@ export const PermissionsView: React.FC = () => {
             Configure o acesso de cada perfil do sistema aos diferentes módulos e funcionalidades.
           </p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving || !selectedRoleId}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
-            saveSuccess 
-              ? 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/50'
-              : 'bg-[#EF7410] hover:bg-[#EF7410]/90 text-white shadow-sm'
-          }`}
-        >
-          {isSaving ? (
-            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          ) : saveSuccess ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          {isSaving ? 'Salvando...' : saveSuccess ? 'Configurações Salvas' : 'Salvar Configurações'}
-        </button>
+        {hasPermission('Users.Update') && (
+          <button
+            onClick={handleSave}
+            disabled={isSaving || !selectedRoleId}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              saveSuccess 
+                ? 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/50'
+                : 'bg-[#EF7410] hover:bg-[#EF7410]/90 text-white shadow-sm'
+            }`}
+          >
+            {isSaving ? (
+              <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            ) : saveSuccess ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {isSaving ? 'Salvando...' : saveSuccess ? 'Configurações Salvas' : 'Salvar Configurações'}
+          </button>
+        )}
       </div>
 
       {isLoading ? (
