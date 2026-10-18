@@ -366,7 +366,15 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             <div className="max-h-64 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
               {activeCatalogTab === 'products' ? (
                 products
-                  .filter((p) => p.name.toLowerCase().includes(catalogSearch.toLowerCase()))
+                  .filter((p) => {
+                    const q = catalogSearch.toLowerCase();
+                    return (
+                      (p.name || '').toLowerCase().includes(q) ||
+                      (p.code || '').toLowerCase().includes(q) ||
+                      (p.sku || '').toLowerCase().includes(q) ||
+                      (p.barcode || '').includes(q)
+                    );
+                  })
                   .map((p) => (
                     <div
                       key={p.id}
@@ -376,7 +384,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                       <div>
                         <div className="font-semibold text-white">{p.name}</div>
                         <div className="text-[11px] text-[#ACB0B0]">
-                          Código: <span className="font-mono">{p.code}</span> · Estoque:{' '}
+                          Código: <span className="font-mono text-white font-bold">#{p.code || p.sku || p.id}</span> · Estoque:{' '}
                           <span className="font-mono text-white">{p.stockQuantity}</span>
                         </div>
                       </div>
@@ -455,7 +463,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                       className="flex items-center justify-between p-2 rounded-lg bg-[#121E30] border border-[#1F2E45]"
                     >
                       <div className="grow min-w-0 pr-2">
-                        <div className="font-medium text-white truncate">{name}</div>
+                        <div className="font-medium text-white truncate">
+                          {pRef && <span className="font-mono text-[#EF7410] font-bold mr-1">#{pRef.code || pRef.sku || pRef.id}</span>}
+                          {name}
+                        </div>
                         <div className="text-[10px] text-[#ACB0B0] font-mono">
                           {item.quantity}x R$ {Number(item.unitPrice).toFixed(2)}
                         </div>

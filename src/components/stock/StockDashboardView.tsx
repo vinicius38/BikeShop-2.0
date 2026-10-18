@@ -152,7 +152,10 @@ export const StockDashboardView: React.FC<StockDashboardViewProps> = ({
                   const isZero = p.stockQuantity <= 0;
                   return (
                     <tr key={p.id} className="hover:bg-[#121E30]/50 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-white">{p.code}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-white">
+                        <span className="text-[#EF7410] mr-0.5 font-bold">#</span>
+                        {p.code || p.sku || p.id}
+                      </td>
                       <td className="py-3 px-4 font-semibold text-white">{p.name}</td>
                       <td className="py-3 px-4 text-[#ACB0B0]">{p.categoryName}</td>
                       <td className="py-3 px-4 text-center font-mono font-bold">

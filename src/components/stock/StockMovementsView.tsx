@@ -146,7 +146,10 @@ export const StockMovementsView: React.FC = () => {
                           minute: '2-digit',
                         })}
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-white">{m.productCode}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-white">
+                        <span className="text-[#EF7410] mr-0.5 font-bold">#</span>
+                        {m.productCode || (m as any).productSku || (m.productId ? String(m.productId) : '-')}
+                      </td>
                       <td className="py-3 px-4 font-semibold text-white">{m.productName}</td>
                       <td className="py-3 px-4">
                         <span

@@ -169,6 +169,7 @@ export interface ProductCategory {
 export interface Product {
   id: number;
   code: string;
+  sku?: string | null;
   barcode: string | null;
   name: string;
   description: string | null;
@@ -230,6 +231,7 @@ export interface WorkOrderItem {
   itemTypeName?: string;
   productId: number | null;
   productSku?: string | null;
+  productCode?: string | null;
   productName?: string | null;
   serviceId: number | null;
   serviceName?: string | null;
@@ -300,6 +302,7 @@ export interface SaleItem {
   saleId: number;
   productId: number | null;
   productName: string | null;
+  productCode?: string | null;
   serviceId: number | null;
   serviceName: string | null;
   quantity: number;

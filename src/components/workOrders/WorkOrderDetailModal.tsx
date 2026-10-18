@@ -422,8 +422,8 @@ export const WorkOrderDetailModal: React.FC<WorkOrderDetailModalProps> = ({
 
   const filteredCatalogProducts = catalogProducts.filter(
     (p) =>
-      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-      p.code.toLowerCase().includes(productSearch.toLowerCase()) ||
+      (p.name || '').toLowerCase().includes(productSearch.toLowerCase()) ||
+      (p.code || p.sku || String(p.id)).toLowerCase().includes(productSearch.toLowerCase()) ||
       (p.barcode && p.barcode.includes(productSearch))
   );
 
@@ -765,9 +765,9 @@ export const WorkOrderDetailModal: React.FC<WorkOrderDetailModalProps> = ({
                           <span className="text-white font-semibold text-xs">
                             {item.description || item.productName}
                           </span>
-                          {item.productSku && (
+                          {(item.productSku || (item as any).productCode) && (
                             <span className="text-[10px] font-mono text-[#ACB0B0] bg-[#121E30] px-1.5 py-0.5 rounded border border-[#1F2E45]">
-                              SKU: {item.productSku}
+                              Cód: {item.productSku || (item as any).productCode}
                             </span>
                           )}
                         </div>
@@ -1036,7 +1036,7 @@ export const WorkOrderDetailModal: React.FC<WorkOrderDetailModalProps> = ({
                       <div>
                         <span className="font-semibold text-white block">{prod.name}</span>
                         <span className="text-[10px] text-[#ACB0B0] font-mono">
-                          SKU: {prod.code} • Estoque: {prod.stockQuantity} {prod.unit}
+                          Cód: {prod.code || prod.sku || prod.id} • Estoque: {prod.stockQuantity} {prod.unit}
                         </span>
                       </div>
                       <span className="font-mono text-[#22C55E] font-bold">

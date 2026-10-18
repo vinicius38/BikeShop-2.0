@@ -122,7 +122,7 @@ export const ProductsView: React.FC = () => {
   const handleOpenEdit = (p: Product) => {
     setEditingProduct(p);
     setFormData({
-      code: p.code,
+      code: p.code || p.sku || String(p.id),
       barcode: p.barcode || '',
       name: p.name,
       description: p.description || '',
@@ -314,7 +314,8 @@ export const ProductsView: React.FC = () => {
                   return (
                     <tr key={p.id} className="hover:bg-[#121E30]/50 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-white">
-                        {p.code}
+                        <span className="text-[#EF7410] mr-0.5 font-bold">#</span>
+                        {p.code || p.sku || p.id}
                         {p.barcode && (
                           <div className="text-[10px] text-[#ACB0B0] font-normal">
                             EAN: {p.barcode}

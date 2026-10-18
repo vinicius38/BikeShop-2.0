@@ -327,9 +327,9 @@ export const WorkOrderPrintModal: React.FC<WorkOrderPrintModalProps> = ({
                     <tr key={p.id}>
                       <td className="border border-slate-300 p-1.5 font-medium">
                         <span>{p.description || p.productName || 'Peça / Componente'}</span>
-                        {p.productSku && (
+                        {(p.productSku || (p as any).productCode) && (
                           <span className="text-[10px] text-slate-500 font-mono ml-1.5">
-                            (SKU: {p.productSku})
+                            (Cód: {p.productSku || (p as any).productCode})
                           </span>
                         )}
                       </td>

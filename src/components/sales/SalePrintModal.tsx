@@ -273,6 +273,11 @@ export const SalePrintModal: React.FC<SalePrintModalProps> = ({
                 {sale.items?.map((item, idx) => (
                   <tr key={idx}>
                     <td className="border border-slate-300 p-1.5 font-medium">
+                      {(item.productCode || (item as any).productSku) && (
+                        <span className="font-mono text-slate-500 mr-1 font-semibold">
+                          [Cód: {item.productCode || (item as any).productSku}]
+                        </span>
+                      )}
                       {item.productName || item.serviceName || 'Item'}
                     </td>
                     <td className="border border-slate-300 p-1.5 text-center font-mono">{item.quantity}</td>

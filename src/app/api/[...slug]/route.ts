@@ -360,6 +360,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
           lowStockProductsCount: parsedLowStockCount,
           lowStockProducts: toCamelCase(lowStockProductsData || []).map((p: any) => ({
             ...p,
+            code: p.code || p.sku || (p.id ? String(p.id) : ''),
+            sku: p.code || p.sku || (p.id ? String(p.id) : ''),
             unit: { 1: 'UN', 2: 'KG', 3: 'L', 4: 'MT', 5: 'PAR', 6: 'CX' }[p.unit as number] || p.unit || 'UN'
           })),
           weeklyMovement,
@@ -552,6 +554,24 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       }
     }
 
+    if (path === 'products/next-code') {
+      const p = prisma as any;
+      const lastProduct = await p.products.findFirst({
+        orderBy: { Id: 'desc' },
+        select: { Id: true, Sku: true }
+      });
+      let nextNumber = 1;
+      if (lastProduct) {
+        const skuNum = parseInt(lastProduct.Sku, 10);
+        if (!isNaN(skuNum) && skuNum >= lastProduct.Id) {
+          nextNumber = skuNum + 1;
+        } else {
+          nextNumber = lastProduct.Id + 1;
+        }
+      }
+      return NextResponse.json({ success: true, data: String(nextNumber) });
+    }
+
     if (path === 'stock/movements') {
       const p = prisma as any;
       const url = new URL(request.url);
@@ -595,7 +615,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       const transformedResult = result.map((m: any) => ({
         id: m.Id,
         productId: m.ProductId,
-        productCode: m.Products?.Sku || '',
+        productCode: m.Products?.Sku || (m.Products?.Id ? String(m.Products.Id) : ''),
+        productSku: m.Products?.Sku || (m.Products?.Id ? String(m.Products.Id) : ''),
         productName: m.Products?.Name || '',
         quantity: m.Quantity,
         previousStock: m.PreviousStock,
@@ -711,6 +732,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
             items: result.SaleItems?.map((item: any) => ({
               id: item.Id,
               productId: item.ProductId,
+              productCode: item.Products?.Sku || (item.Products?.Id ? String(item.Products.Id) : ''),
+              productSku: item.Products?.Sku || (item.Products?.Id ? String(item.Products.Id) : ''),
               productName: item.Products?.Name,
               serviceId: item.ServiceId,
               serviceName: item.Services?.Name,
@@ -739,7 +762,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
                 itemTypeName: item.itemType === 1 ? 'Product' : 'Service',
                 productId: item.productId,
                 productName: item.products?.name,
-                productSku: item.products?.code,
+                productSku: item.products?.sku || item.products?.code || (item.products?.id ? String(item.products.id) : undefined),
+                productCode: item.products?.sku || item.products?.code || (item.products?.id ? String(item.products.id) : undefined),
                 serviceId: item.serviceId,
                 serviceName: item.services?.name,
                 description: item.description,
@@ -759,6 +783,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
           } else if (modelName === 'products') {
             transformedResult.categoryId = transformedResult.productCategoryId;
             delete transformedResult.productCategoryId;
+            transformedResult.code = transformedResult.sku || (transformedResult.id ? String(transformedResult.id) : '');
+            transformedResult.sku = transformedResult.code;
             if (transformedResult.minimumStock !== undefined) {
               transformedResult.minimumStockQuantity = transformedResult.minimumStock;
             }
@@ -1025,6 +1051,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
                 items: sale.SaleItems?.map((item: any) => ({
                   id: item.Id,
                   productId: item.ProductId,
+                  productCode: item.Products?.Sku || (item.Products?.Id ? String(item.Products.Id) : ''),
+                  productSku: item.Products?.Sku || (item.Products?.Id ? String(item.Products.Id) : ''),
                   productName: item.Products?.Name,
                   serviceId: item.ServiceId,
                   serviceName: item.Services?.Name,
@@ -1086,6 +1114,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
                   1: 'UN', 2: 'KG', 3: 'L', 4: 'MT', 5: 'PAR', 6: 'CX'
                 };
                 transformedResult = transformedResult.map((p: any) => {
+                  p.code = p.sku || (p.id ? String(p.id) : '');
+                  p.sku = p.code;
                   if (typeof p.unit === 'number') {
                     p.unit = reverseUnitMap[p.unit] || 'UN';
                   }
@@ -1481,6 +1511,8 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         if (pascalBody.Code !== undefined) {
           pascalBody.Sku = String(pascalBody.Code);
           delete pascalBody.Code;
+        } else if (pascalBody.Sku !== undefined) {
+          pascalBody.Sku = String(pascalBody.Sku);
         }
         if (pascalBody.CategoryId !== undefined) {
           pascalBody.ProductCategoryId = Number(pascalBody.CategoryId);
@@ -1689,6 +1721,8 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
           items: result.SaleItems?.map((item: any) => ({
             id: item.Id,
             productId: item.ProductId,
+            productCode: item.Products?.Sku || (item.Products?.Id ? String(item.Products.Id) : ''),
+            productSku: item.Products?.Sku || (item.Products?.Id ? String(item.Products.Id) : ''),
             productName: item.Products?.Name,
             serviceId: item.ServiceId,
             serviceName: item.Services?.Name,
@@ -1724,6 +1758,13 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         }
         transformedUser.permissions = getRolePermissions(transformedUser.roleId, transformedUser.roleName, perms);
         return NextResponse.json({ success: true, data: transformedUser });
+      }
+
+      if (modelName === 'products') {
+        const transformedProduct = toCamelCase(result);
+        transformedProduct.code = transformedProduct.sku || (transformedProduct.id ? String(transformedProduct.id) : '');
+        transformedProduct.sku = transformedProduct.code;
+        return NextResponse.json({ success: true, data: transformedProduct });
       }
 
       return NextResponse.json({ success: true, data: toCamelCase(result) });
@@ -1887,6 +1928,8 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
           if (pascalBody.Code !== undefined) {
             pascalBody.Sku = String(pascalBody.Code);
             delete pascalBody.Code;
+          } else if (pascalBody.Sku !== undefined) {
+            pascalBody.Sku = String(pascalBody.Sku);
           }
           if (pascalBody.CategoryId !== undefined) {
             pascalBody.ProductCategoryId = Number(pascalBody.CategoryId);
@@ -1977,6 +2020,13 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
           }
           transformedUser.permissions = getRolePermissions(transformedUser.roleId, transformedUser.roleName, perms);
           return NextResponse.json({ success: true, data: transformedUser });
+        }
+
+        if (modelName === 'products') {
+          const transformedProduct = toCamelCase(result);
+          transformedProduct.code = transformedProduct.sku || (transformedProduct.id ? String(transformedProduct.id) : '');
+          transformedProduct.sku = transformedProduct.code;
+          return NextResponse.json({ success: true, data: transformedProduct });
         }
 
         return NextResponse.json({ success: true, data: toCamelCase(result) });
