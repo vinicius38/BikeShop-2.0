@@ -22,7 +22,7 @@ import { Customer, Bicycle, WorkOrder, Sale } from '../../types/api';
 import { Pagination } from '../common/Pagination';
 import { Modal } from '../common/Modal';
 import { Badge } from '../common/Badge';
-import { maskCpfCnpj, maskCellPhone, maskPhone, maskCep } from '../../utils/maskUtils';
+import { maskCpfCnpj, maskCellPhone, maskPhone, maskCep, isGenericCpfCnpj } from '../../utils/maskUtils';
 import { useAuth } from '../../context/AuthContext';
 
 export const CustomersView: React.FC = () => {
@@ -157,13 +157,17 @@ export const CustomersView: React.FC = () => {
   };
 
   const handleCpfCnpjBlur = async () => {
-    if (!formData.cpfCnpj) return;
+    if (isGenericCpfCnpj(formData.cpfCnpj)) {
+      if (errorMsg?.includes('CPF/CNPJ')) setErrorMsg(null);
+      return;
+    }
     const cleanCpfCnpj = formData.cpfCnpj.replace(/\D/g, '');
-    if (!cleanCpfCnpj) return;
 
     try {
       const res = await customerService.getAll({ cpfCnpj: cleanCpfCnpj });
-      const existing = res.items.find((c) => c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj);
+      const existing = res.items.find(
+        (c) => !isGenericCpfCnpj(c.cpfCnpj) && c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj
+      );
       if (existing && existing.id !== editingCustomer?.id) {
         setErrorMsg(`Atenção: Já existe um cliente cadastrado com este CPF/CNPJ (${existing.name}).`);
       } else {
@@ -180,21 +184,21 @@ export const CustomersView: React.FC = () => {
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    // Final verification before submit
-    if (formData.cpfCnpj) {
+    // Final verification before submit (only for non-generic CPFs)
+    if (!isGenericCpfCnpj(formData.cpfCnpj)) {
       const cleanCpfCnpj = formData.cpfCnpj.replace(/\D/g, '');
-      if (cleanCpfCnpj) {
-        try {
-          const res = await customerService.getAll({ cpfCnpj: cleanCpfCnpj });
-          const existing = res.items.find((c) => c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj);
-          if (existing && existing.id !== editingCustomer?.id) {
-            setErrorMsg(`Não é possível salvar. Já existe um cliente cadastrado com este CPF/CNPJ (${existing.name}).`);
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (err) {
-          // ignore network errors here, let backend handle if it fails
+      try {
+        const res = await customerService.getAll({ cpfCnpj: cleanCpfCnpj });
+        const existing = res.items.find(
+          (c) => !isGenericCpfCnpj(c.cpfCnpj) && c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj
+        );
+        if (existing && existing.id !== editingCustomer?.id) {
+          setErrorMsg(`Não é possível salvar. Já existe um cliente cadastrado com este CPF/CNPJ (${existing.name}).`);
+          setIsSubmitting(false);
+          return;
         }
+      } catch (err) {
+        // ignore network errors here, let backend handle if it fails
       }
     }
 
@@ -202,7 +206,7 @@ export const CustomersView: React.FC = () => {
       const payload = {
         ...formData,
         name: formData.name.trim(),
-        cpfCnpj: formData.cpfCnpj?.trim() || null,
+        cpfCnpj: isGenericCpfCnpj(formData.cpfCnpj) ? '000.000.000-00' : formData.cpfCnpj.trim(),
         phone: formData.phone?.trim() || null,
         cellPhone: formData.cellPhone?.trim() || null,
         email: formData.email?.trim() || null,
@@ -588,12 +592,11 @@ export const CustomersView: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-[#ACB0B0] uppercase mb-1">
-                  CPF / CNPJ *
+                  CPF / CNPJ (Opcional)
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                  placeholder="000.000.000-00 (Opcional)"
                   maxLength={18}
                   value={formData.cpfCnpj}
                   onChange={(e) => setFormData({ ...formData, cpfCnpj: maskCpfCnpj(e.target.value) })}

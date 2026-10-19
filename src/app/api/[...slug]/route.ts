@@ -1007,6 +1007,31 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
               if (customerIdParam) {
                 whereClause.CustomerId = Number(customerIdParam);
               }
+            } else if (modelName === 'customers') {
+              const cpfCnpjParam = url.searchParams.get('CpfCnpj') || url.searchParams.get('cpfCnpj');
+              if (cpfCnpjParam) {
+                const cleanParam = cpfCnpjParam.replace(/\D/g, '');
+                if (!cleanParam || /^0+$/.test(cleanParam)) {
+                  // Generic placeholder CPF (000.000.000-00) must never trigger duplicate conflict
+                  whereClause.Id = -1;
+                } else {
+                  const matchingCustomers: any[] = await (prisma as any).$queryRaw`
+                    SELECT "Id" FROM "Customers" 
+                    WHERE regexp_replace(COALESCE("CpfCnpj", ''), '[^0-9]', '', 'g') = ${cleanParam}
+                  `;
+                  const matchingIds = matchingCustomers.map((c: any) => c.Id);
+                  whereClause.Id = { in: matchingIds.length > 0 ? matchingIds : [-1] };
+                }
+              }
+              if (search) {
+                whereClause.OR = [
+                  { Name: { contains: search, mode: 'insensitive' } },
+                  { CpfCnpj: { contains: search, mode: 'insensitive' } },
+                  { Phone: { contains: search, mode: 'insensitive' } },
+                  { CellPhone: { contains: search, mode: 'insensitive' } },
+                  { Email: { contains: search, mode: 'insensitive' } },
+                ];
+              }
             }
 
             const page = parseInt(url.searchParams.get('Page') || url.searchParams.get('page') || '1');
@@ -1486,7 +1511,34 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         pascalBody.IsActive = true;
       }
 
-      if (modelName === 'bicycles') {
+      if (modelName === 'customers') {
+        const rawCpfCnpj = pascalBody.CpfCnpj;
+        const cleanDigits = (rawCpfCnpj || '').replace(/\D/g, '');
+        const isGeneric = !cleanDigits || /^0+$/.test(cleanDigits);
+
+        if (isGeneric) {
+          pascalBody.CpfCnpj = '000.000.000-00';
+        } else {
+          const existingCustomers: any[] = await (prisma as any).$queryRaw`
+            SELECT "Id", "Name", "CpfCnpj" 
+            FROM "Customers" 
+            WHERE regexp_replace(COALESCE("CpfCnpj", ''), '[^0-9]', '', 'g') = ${cleanDigits}
+            LIMIT 1
+          `;
+          if (existingCustomers && existingCustomers.length > 0) {
+            return NextResponse.json(
+              { success: false, message: `Não é possível cadastrar. Já existe um cliente cadastrado com este CPF/CNPJ (${existingCustomers[0].Name}).` },
+              { status: 400 }
+            );
+          }
+        }
+
+        if (pascalBody.BirthDate) {
+          pascalBody.BirthDate = new Date(pascalBody.BirthDate);
+        } else if (pascalBody.BirthDate === '') {
+          pascalBody.BirthDate = null;
+        }
+      } else if (modelName === 'bicycles') {
         if (pascalBody.Type) {
           const typeMap: Record<string, number> = {
             'Mountain Bike (MTB)': 1,
@@ -1690,6 +1742,10 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
             }
           }
         };
+      } else if (modelName === 'customers') {
+        includeConfig = {
+          Addresses: true
+        };
       }
 
       const result = await (prisma as any)[modelName].create({ 
@@ -1758,6 +1814,15 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         }
         transformedUser.permissions = getRolePermissions(transformedUser.roleId, transformedUser.roleName, perms);
         return NextResponse.json({ success: true, data: transformedUser });
+      }
+
+      if (modelName === 'customers') {
+        const transformedCustomer = toCamelCase(result);
+        if (transformedCustomer.addresses) {
+          transformedCustomer.address = transformedCustomer.addresses;
+          delete transformedCustomer.addresses;
+        }
+        return NextResponse.json({ success: true, data: transformedCustomer });
       }
 
       if (modelName === 'products') {
@@ -1975,6 +2040,34 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
             pascalBody.PasswordHash = pascalBody.Password;
             delete pascalBody.Password;
           }
+        } else if (modelName === 'customers') {
+          if (pascalBody.CpfCnpj !== undefined) {
+            const cleanDigits = (pascalBody.CpfCnpj || '').replace(/\D/g, '');
+            const isGeneric = !cleanDigits || /^0+$/.test(cleanDigits);
+
+            if (isGeneric) {
+              pascalBody.CpfCnpj = '000.000.000-00';
+            } else {
+              const existingCustomers: any[] = await (prisma as any).$queryRaw`
+                SELECT "Id", "Name", "CpfCnpj" 
+                FROM "Customers" 
+                WHERE regexp_replace(COALESCE("CpfCnpj", ''), '[^0-9]', '', 'g') = ${cleanDigits}
+                  AND "Id" != ${id}
+                LIMIT 1
+              `;
+              if (existingCustomers && existingCustomers.length > 0) {
+                return NextResponse.json(
+                  { success: false, message: `Não é possível salvar. Já existe um cliente cadastrado com este CPF/CNPJ (${existingCustomers[0].Name}).` },
+                  { status: 400 }
+                );
+              }
+            }
+          }
+          if (pascalBody.BirthDate) {
+            pascalBody.BirthDate = new Date(pascalBody.BirthDate);
+          } else if (pascalBody.BirthDate === '') {
+            pascalBody.BirthDate = null;
+          }
         }
 
         let includeConfig: any = undefined;
@@ -1987,6 +2080,10 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
                 }
               }
             }
+          };
+        } else if (modelName === 'customers') {
+          includeConfig = {
+            Addresses: true
           };
         }
 
@@ -2020,6 +2117,15 @@ export async function PUT(request: Request, context: { params: Promise<{ slug: s
           }
           transformedUser.permissions = getRolePermissions(transformedUser.roleId, transformedUser.roleName, perms);
           return NextResponse.json({ success: true, data: transformedUser });
+        }
+
+        if (modelName === 'customers') {
+          const transformedCustomer = toCamelCase(result);
+          if (transformedCustomer.addresses) {
+            transformedCustomer.address = transformedCustomer.addresses;
+            delete transformedCustomer.addresses;
+          }
+          return NextResponse.json({ success: true, data: transformedCustomer });
         }
 
         if (modelName === 'products') {

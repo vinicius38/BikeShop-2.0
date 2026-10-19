@@ -3,7 +3,7 @@ import { User, Plus, X } from 'lucide-react';
 import { Modal } from './Modal';
 import { customerService, CreateCustomerDto } from '../../services/customerService';
 import { Customer } from '../../types/api';
-import { maskCpfCnpj, maskCellPhone } from '../../utils/maskUtils';
+import { maskCpfCnpj, maskCellPhone, isGenericCpfCnpj } from '../../utils/maskUtils';
 
 interface QuickCustomerModalProps {
   isOpen: boolean;
@@ -37,13 +37,17 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleCpfCnpjBlur = async () => {
-    if (!formData.cpfCnpj) return;
+    if (isGenericCpfCnpj(formData.cpfCnpj)) {
+      if (errorMsg?.includes('CPF/CNPJ')) setErrorMsg(null);
+      return;
+    }
     const cleanCpfCnpj = formData.cpfCnpj.replace(/\D/g, '');
-    if (!cleanCpfCnpj) return;
 
     try {
       const res = await customerService.getAll({ cpfCnpj: cleanCpfCnpj });
-      const existing = res.items.find((c) => c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj);
+      const existing = res.items.find(
+        (c) => !isGenericCpfCnpj(c.cpfCnpj) && c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj
+      );
       if (existing) {
         setErrorMsg(`Atenção: Já existe um cliente cadastrado com este CPF/CNPJ (${existing.name}).`);
       } else {
@@ -56,34 +60,39 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.cpfCnpj.trim()) {
-      setErrorMsg('Informe ao menos o nome completo e o CPF/CNPJ do cliente.');
+    if (!formData.name.trim()) {
+      setErrorMsg('Informe ao menos o nome completo do cliente.');
       return;
     }
 
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    // Final verification before submit
-    if (formData.cpfCnpj) {
+    // Final verification before submit (only for non-generic CPFs)
+    if (!isGenericCpfCnpj(formData.cpfCnpj)) {
       const cleanCpfCnpj = formData.cpfCnpj.replace(/\D/g, '');
-      if (cleanCpfCnpj) {
-        try {
-          const res = await customerService.getAll({ cpfCnpj: cleanCpfCnpj });
-          const existing = res.items.find((c) => c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj);
-          if (existing) {
-            setErrorMsg(`Não é possível salvar. Já existe um cliente cadastrado com este CPF/CNPJ (${existing.name}).`);
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (err) {
-          // ignore network errors here, let backend handle if it fails
+      try {
+        const res = await customerService.getAll({ cpfCnpj: cleanCpfCnpj });
+        const existing = res.items.find(
+          (c) => !isGenericCpfCnpj(c.cpfCnpj) && c.cpfCnpj?.replace(/\D/g, '') === cleanCpfCnpj
+        );
+        if (existing) {
+          setErrorMsg(`Não é possível salvar. Já existe um cliente cadastrado com este CPF/CNPJ (${existing.name}).`);
+          setIsSubmitting(false);
+          return;
         }
+      } catch (err) {
+        // ignore network errors here, let backend handle if it fails
       }
     }
 
     try {
-      const created = await customerService.create(formData);
+      const finalCpfCnpj = isGenericCpfCnpj(formData.cpfCnpj) ? '000.000.000-00' : formData.cpfCnpj.trim();
+      const created = await customerService.create({
+        ...formData,
+        name: formData.name.trim(),
+        cpfCnpj: finalCpfCnpj,
+      });
       onCustomerCreated(created);
       onClose();
     } catch (err: any) {
@@ -125,12 +134,11 @@ export const QuickCustomerModal: React.FC<QuickCustomerModalProps> = ({
 
           <div>
             <label className="block font-semibold text-[#ACB0B0] uppercase mb-1">
-              CPF / CNPJ *
+              CPF / CNPJ (Opcional)
             </label>
             <input
               type="text"
-              required
-              placeholder="000.000.000-00 ou 00.000.000/0001-00"
+              placeholder="000.000.000-00 (Opcional)"
               maxLength={18}
               value={formData.cpfCnpj}
               onChange={(e) => setFormData({ ...formData, cpfCnpj: maskCpfCnpj(e.target.value) })}

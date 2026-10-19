@@ -49,6 +49,17 @@ export function maskCpfCnpj(value: string | null | undefined): string {
 }
 
 /**
+ * Verifica se o CPF/CNPJ é vazio ou genérico ("sem CPF", ex: 000.000.000-00 ou composto apenas por zeros).
+ */
+export function isGenericCpfCnpj(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const digits = unmask(value);
+  if (!digits) return true;
+  return /^0+$/.test(digits);
+}
+
+
+/**
  * Formata Celular com DDD (11 dígitos): (35) 99999-9999
  */
 export function maskCellPhone(value: string | null | undefined): string {
