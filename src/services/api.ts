@@ -3,9 +3,20 @@ import { ApiResponse } from '../types/api';
 const TOKEN_KEY = 'oficinabike_token';
 const USER_KEY = 'oficinabike_user';
 
+// Limpeza proativa de dados legados do localStorage para garantir que
+// fechar a janela ou abrir uma nova sempre exija novo login
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  } catch {
+    // Ignorar caso o acesso ao localStorage esteja indisponível
+  }
+}
+
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function setStoredAuth(token: string, user: any): void {
@@ -13,8 +24,9 @@ export function setStoredAuth(token: string, user: any): void {
   try {
     sessionStorage.setItem(TOKEN_KEY, token);
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    // Garantir que não permaneça salvo no localStorage
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
   } catch (e) {
     console.warn('Storage set error:', e);
   }
@@ -34,7 +46,7 @@ export function clearStoredAuth(): void {
 
 export function getStoredUser(): any | null {
   if (typeof window === 'undefined') return null;
-  const raw = sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
